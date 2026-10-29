@@ -1,0 +1,46 @@
+# Name and version live here. config.go and scripts/build.sh read them.
+# The binary name is APP_NAME in Taskfile.yml.
+#
+# `wails3 task common:update:build-assets` rewrites the plists, the Windows
+# manifest, and the Linux package file from this info. That rewrite sets the
+# Mac minimum system version back to 12. Put it back to 14.0.0. The zoom path
+# uses CADisplayLink, and build/darwin/Taskfile.yml compiles for macOS 14.
+version: '3'
+
+info:
+  companyName: "Your Name"
+  productName: "Boilerplate"
+  productIdentifier: "com.wails.boilerplate"
+  description: "Wails + Vue 3 + Go foundation."
+  copyright: "Copyright"
+  comments: "Copyright"
+  version: "0.1.0"
+
+dev_mode:
+  root_path: .
+  log_level: warn
+  debounce: 1000
+  ignore:
+    dir:
+      - .git
+      - node_modules
+      - frontend
+      - bin
+    file:
+      - .DS_Store
+      - .gitignore
+      - .gitkeep
+      - "*_test.go"
+    watched_extension:
+      - "*.go"
+      - "*.js"
+      - "*.ts"
+    git_ignore: true
+  executes:
+    - cmd: wails3 build DEV=true
+      type: blocking
+    - cmd: wails3 task common:dev:frontend
+      type: background
+    - cmd: wails3 task run
+      type: primary
+      exit_policy: shutdown

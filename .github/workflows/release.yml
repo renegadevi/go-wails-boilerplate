@@ -1,0 +1,252 @@
+# Signed release. Starts only from the Actions "Run workflow" button.
+# A push to main does not run it. The script is the same one used on a laptop:
+# ./scripts/build.sh build --dist
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish a GitHub Release named from info.version
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Require Apple signing secrets
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          missing=""
+          for name in APPLE_CERTIFICATE_BASE64 APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_TEAM_ID APPLE_APP_SPECIFIC_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              missing="${missing} ${name}"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "Missing Actions secrets:${missing}"
+            echo "Add them under Settings, Secrets and variables, Actions."
+            echo "To sign on a Mac instead, copy build/dist.env.example to build/dist.env and run ./scripts/build.sh build --dist"
+            exit 1
+          fi
+
+      - name: Import the Developer ID certificate
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          cert="$RUNNER_TEMP/developer-id.p12"
+          if ! printf '%s' "$APPLE_CERTIFICATE_BASE64" | base64 --decode > "$cert" 2>/dev/null; then
+            printf '%s' "$APPLE_CERTIFICATE_BASE64" | base64 -D > "$cert"
+          fi
+          security create-keychain -p "" "$RUNNER_TEMP/build.keychain"
+          security default-keychain -s "$RUNNER_TEMP/build.keychain"
+          security unlock-keychain -p "" "$RUNNER_TEMP/build.keychain"
+          security import "$cert" -k "$RUNNER_TEMP/build.keychain" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$RUNNER_TEMP/build.keychain"
+          security list-keychains -d user -s "$RUNNER_TEMP/build.keychain" $(security list-keychains -d user | tr -d '"')
+          rm -f "$cert"
+
+      - name: Store notary credentials
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          xcrun notarytool store-credentials "ci-notary" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD"
+
+      - name: Write dist.env
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          cat > build/dist.env << EOF
+          APPLE_SIGNING_IDENTITY="$APPLE_SIGNING_IDENTITY"
+          APPLE_NOTARY_KEYCHAIN_PROFILE="ci-notary"
+          EOF
+
+      - name: Build the notarized DMG
+        run: ./scripts/build.sh build --dist --platforms darwin/arm64
+
+      - name: Upload macOS packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*/macos
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Remove signing material
+        if: always()
+        run: rm -f build/dist.env "$RUNNER_TEMP/developer-id.p12"
+
+  linux:
+    name: Linux and Windows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev nsis osslsigncode wget file rpm
+          sudo apt-get install -y libfuse2 || sudo apt-get install -y libfuse2t64 || true
+          sudo apt-get install -y dpkg-sig || true
+
+      - name: Require the Windows signing secret
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          missing=""
+          for name in WINDOWS_CERTIFICATE_BASE64 WINDOWS_CERTIFICATE_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              missing="${missing} ${name}"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "Missing Actions secrets:${missing}"
+            echo "Add them under Settings, Secrets and variables, Actions."
+            echo "To sign on your computer instead, copy build/dist.env.example to build/dist.env and run ./scripts/build.sh build --dist"
+            exit 1
+          fi
+
+      - name: Write dist.env
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          LINUX_PGP_KEY: ${{ secrets.LINUX_PGP_KEY }}
+          LINUX_PGP_PASSWORD: ${{ secrets.LINUX_PGP_PASSWORD }}
+        run: |
+          cert="$RUNNER_TEMP/windows.pfx"
+          printf '%s' "$WINDOWS_CERTIFICATE_BASE64" | base64 --decode > "$cert"
+          cat > build/dist.env << EOF
+          WINDOWS_CERT_PATH="$cert"
+          WINDOWS_CERT_PASSWORD="$WINDOWS_CERTIFICATE_PASSWORD"
+          WINDOWS_TIMESTAMP_URL="http://timestamp.digicert.com"
+          EOF
+          if [ -n "$LINUX_PGP_KEY" ]; then
+            printf '%s\n' "$LINUX_PGP_KEY" > "$RUNNER_TEMP/linux-signing.asc"
+            printf 'LINUX_PGP_KEY="%s"\n' "$RUNNER_TEMP/linux-signing.asc" >> build/dist.env
+            if [ -n "$LINUX_PGP_PASSWORD" ]; then
+              printf 'LINUX_PGP_PASSWORD="%s"\n' "$LINUX_PGP_PASSWORD" >> build/dist.env
+            fi
+          fi
+
+      - name: Build Linux packages and the Windows installer
+        run: ./scripts/build.sh build --dist --platforms linux/amd64,windows/amd64
+
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*/linux
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Upload Windows packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*/windows
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Remove signing material
+        if: always()
+        run: rm -f build/dist.env "$RUNNER_TEMP/windows.pfx" "$RUNNER_TEMP/linux-signing.asc"
+
+  publish:
+    name: Publish GitHub Release
+    needs: [macos, linux]
+    if: ${{ inputs.publish_release == true }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(python3 -c '
+          import re
+          text = open("build/config.yml", encoding="utf-8").read()
+          match = re.search(r"(?m)^  version: \"([^\"]+)\"", text)
+          print(match.group(1) if match else "")
+          ')"
+          test -n "$version"
+          tag="v${version}"
+          files=()
+          while IFS= read -r file; do
+            files+=("$file")
+          done < <(find dist -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \) | LC_ALL=C sort)
+          test "${#files[@]}" -gt 0
+          checksums="$RUNNER_TEMP/checksums.txt"
+          (
+            cd dist
+            find . -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \) -print | LC_ALL=C sort | while IFS= read -r file; do
+              sha256sum "$file"
+            done
+          ) > "$checksums"
+          files+=("$checksums")
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "${files[@]}" --clobber
+          else
+            gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" --title "$tag" --notes "Built from ${GITHUB_SHA}."
+          fi

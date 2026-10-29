@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=Boilerplate
+Comment=Wails + Vue 3 + Go foundation.
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/boilerplate %u
+Terminal=false
+Type=Application
+Icon=boilerplate
+Categories=Utility;
+StartupWMClass=boilerplate
+
+ 

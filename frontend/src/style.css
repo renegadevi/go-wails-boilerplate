@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #141618;
+  --color-panel: #1c1e20;
+  --color-line: #2a2d31;
+  --color-ink: #d0d2d4;
+  --color-muted: #8b9096;
+  --color-amber: #e0a100;
+  --color-accent: #2eb5e0;
+  --color-up: #3d9a5b;
+  --color-down: #c44b4b;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radius-sm: 4px;
+}
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--color-bg);
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  outline: none;
+  box-shadow: none;
+}
+
+button {
+  padding: 0 8px;
+  height: 24px;
+  cursor: pointer;
+}
+
+input {
+  height: 24px;
+  padding: 0 6px;
+}
+
+input:focus,
+input:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-bg);
+  --wails-draggable: drag;
+  user-select: none;
+  cursor: default;
+}
+
+/* Taller custom toolbar, the kind current macOS apps use. window_darwin.go
+   centers the 14pt traffic lights in this 42pt bar (16pt from the left).
+   The extra pixel is the bottom border: border-box would otherwise take
+   it out of the 42pt, and the title would sit off the lights. */
+.titlebar--mac {
+  position: relative;
+  height: calc(42px + 1px);
+}
+
+.titlebar-title {
+  padding: 0 12px;
+  font-weight: 600;
+}
+
+/* The label stays in the middle of the bar, same as a macOS title.
+   Hiding the traffic lights in fullscreen then does not slide it. The
+   side padding keeps a long label off the lights without moving the center. */
+.titlebar--mac .titlebar-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 92px;
+  pointer-events: none;
+}
+
+.titlebar-lights {
+  /* Lights start at x=16. Three 14pt buttons on a 23pt pitch end at x=76. */
+  width: 80px;
+  flex-shrink: 0;
+  --wails-draggable: no-drag;
+}
+
+.titlebar-controls {
+  display: flex;
+  margin-left: auto;
+  --wails-draggable: no-drag;
+}
+
+.titlebar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  cursor: default;
+}
+
+.titlebar-btn svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.titlebar-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.titlebar-btn.close:hover {
+  background: #c42b1c;
+  color: #fff;
+}
