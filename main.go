@@ -3,6 +3,8 @@ package main
 import (
 	"embed"
 
+	"boilerplate/internal/applog"
+
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -14,6 +16,8 @@ func main() {
 	app := application.New(application.Options{
 		Name:        AppTitle,
 		Description: AppDescription,
+		// Dev Wails lines use the app log's 24-hour clock. Nil keeps production silent.
+		Logger: applog.System(),
 		Services: []application.Service{
 			application.NewService(service),
 		},

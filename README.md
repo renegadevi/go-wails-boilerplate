@@ -113,6 +113,8 @@ Frameless windows draw `frontend/src/Toolbar.vue`. macOS traffic lights are in t
 - `build/config.yml` `info.description` - app description and UI subtitle
 - `build/config.yml` `info.version` - UI and About (`X.Y.Z`)
 - `Taskfile.yml` `APP_NAME` - binary and package name
+- `build/config.yml` `dev_mode.log_level` - Wails watcher
+- `.env` `LOG_CONSOLE_LEVEL`, `LOG_FILE_LEVEL` - app log. Defaults are in `.env.sample`
 
 `config.go` and the frontend load `productName`, `description`, and `version` from `build/config.yml`. `scripts/build.sh` reads `APP_NAME`, `info.productName`, and `info.version`.
 

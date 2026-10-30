@@ -22,7 +22,8 @@ info:
 
 dev_mode:
   root_path: .
-  log_level: debug
+  # Wails file watcher. App logs are LOG_CONSOLE_LEVEL and LOG_FILE_LEVEL in .env.
+  log_level: warn
   debounce: 1000
   ignore:
     dir:

@@ -4,36 +4,46 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/joho/godotenv"
 	log "github.com/renegadevi/prezerolog"
 )
 
 // Pre sends process logs through prezerolog. Device changes do not go through here.
 type Pre struct{}
 
-// Init prepares console and rotated file logging. Levels come from the environment, with development defaults.
+// logDefaults fill any app log setting still empty after the process environment and .env.
+// A shell export wins over .env. .env wins over these.
+var logDefaults = map[string]string{
+	"LOG_NAME":           "boilerplate",
+	"LOG_ENV":            "development",
+	"LOG_FILE":           "true",
+	"LOG_CONSOLE":        "true",
+	"LOG_CONSOLE_LEVEL":  "debug",
+	"LOG_FILE_LEVEL":     "debug",
+	"LOG_CONSOLE_OUTPUT": "full",
+}
+
+// Init prepares console and rotated file logging.
 // The log folder is absolute. Finder starts a Mac app with a working directory of /, and a relative "logs" folder panics there.
 func Init() {
+	applyLogDefaults()
 	dir := logDirectory()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		dir = filepath.Join(os.TempDir(), "boilerplate", "logs")
 		_ = os.MkdirAll(dir, 0o755)
 	}
 	_ = os.Setenv("LOG_DIR", dir)
-	defaults := map[string]string{
-		"LOG_NAME":           "boilerplate",
-		"LOG_ENV":            "development",
-		"LOG_FILE":           "true",
-		"LOG_CONSOLE":        "true",
-		"LOG_CONSOLE_LEVEL":  "info",
-		"LOG_FILE_LEVEL":     "debug",
-		"LOG_CONSOLE_OUTPUT": "full",
-	}
-	for key, value := range defaults {
+	log.InitLogging()
+}
+
+// applyLogDefaults loads .env, then fills any log setting that is still empty.
+func applyLogDefaults() {
+	_ = godotenv.Load()
+	for key, value := range logDefaults {
 		if os.Getenv(key) == "" {
 			_ = os.Setenv(key, value)
 		}
 	}
-	log.InitLogging()
 }
 
 // logDirectory is where process logs are written. An absolute LOG_DIR is kept. Anything else goes next to the database.

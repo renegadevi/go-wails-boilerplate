@@ -14,7 +14,7 @@ Development:
 wails3 dev
 ```
 
-`.env` is optional. Default log: console info, rotated debug file under `logs/`.
+`.env` is optional. Copy `.env.sample` to `.env` to change the app log. Defaults: console debug, rotated debug file. `dev_mode.log_level` in `build/config.yml` is the Wails watcher.
 
 Local packages for this machine:
 
