@@ -2,13 +2,11 @@
 
 Wails v3 desktop app. Go backend, Vue 3 + TypeScript + Tailwind frontend.
 
-**WindowFrameMenu** on macOS
-
-![WindowFrameMenu on macOS](docs/window-frame-menu.png)
-
 **WindowFramelessMenu** on macOS
 
-![WindowFramelessMenu on macOS](docs/window-frameless-menu.png)
+![WindowFramelessMenu on macOS](docs/screenshot.png)
+
+Every window mode on macOS, Windows, and Linux: [Window modes](docs/window-modes.md).
 
 ## Stack
 
@@ -101,10 +99,11 @@ go test ./...
 - `Taskfile.yml` - Wails tasks
 - `scripts/build.sh` - build and release. On Windows: `scripts\build.cmd`
 - `docs/building.md` - packages and signing
+- `docs/window-modes.md` - window screenshots per OS
 
 ## Window
 
-`window` in `window.go`. Current value: `WindowFramelessMenu`.
+`window` in `window.go`. Current value: `WindowFramelessMenu`. Screenshots: [Window modes](docs/window-modes.md).
 
 | Constant | Result |
 | --- | --- |
