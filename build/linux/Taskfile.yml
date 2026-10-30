@@ -132,6 +132,7 @@ tasks:
       - task: build
     cmds:
       - task: generate:dotdesktop
+      - task: generate:metainfo
       - task: generate:deb
 
   create:rpm:
@@ -140,6 +141,7 @@ tasks:
       - task: build
     cmds:
       - task: generate:dotdesktop
+      - task: generate:metainfo
       - task: generate:rpm
 
   create:aur:
@@ -148,6 +150,7 @@ tasks:
       - task: build
     cmds:
       - task: generate:dotdesktop
+      - task: generate:metainfo
       - task: generate:aur
 
   generate:deb:
@@ -164,6 +167,11 @@ tasks:
     summary: Creates a arch linux packager package
     cmds:
       - wails3 tool package -name "{{.APP_NAME}}" -format archlinux -config ./build/linux/nfpm/nfpm.yaml -out {{.ROOT_DIR}}/bin
+
+  generate:metainfo:
+    summary: Writes the AppStream metainfo file for Linux software centers
+    cmds:
+      - python3 "{{.ROOT_DIR}}/scripts/write-linux-metainfo.py"
 
   generate:dotdesktop:
     summary: Generates a `.desktop` file

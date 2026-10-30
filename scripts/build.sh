@@ -210,7 +210,12 @@ load_dist_env
 app_name="$(read_yaml_value Taskfile.yml '(?m)^  APP_NAME: \"([^\"]+)\"')"
 app_version="$(read_yaml_value build/config.yml '(?m)^  version: \"([^\"]+)\"')"
 product_name="$(read_yaml_value build/config.yml '(?m)^  productName: \"([^\"]+)\"')"
-[[ -n "$app_name" && -n "$app_version" && -n "$product_name" ]] || die "APP_NAME, info.productName, and info.version must be set"
+product_id="$(read_yaml_value build/config.yml '(?m)^  productIdentifier: \"([^\"]+)\"')"
+app_description="$(read_yaml_value build/config.yml '(?m)^  description: \"([^\"]+)\"')"
+app_company="$(read_yaml_value build/config.yml '(?m)^  companyName: \"([^\"]+)\"')"
+app_homepage="$(read_yaml_value build/config.yml '(?m)^  homepage: \"([^\"]+)\"')"
+app_license="$(read_yaml_value build/config.yml '(?m)^  license: \"([^\"]+)\"')"
+[[ -n "$app_name" && -n "$app_version" && -n "$product_name" && -n "$product_id" && -n "$app_description" && -n "$app_company" && -n "$app_homepage" && -n "$app_license" ]] || die "APP_NAME, info.productName, info.productIdentifier, info.description, info.companyName, info.version, info.homepage, and info.license must be set"
 [[ "$product_name" != */* ]] || die "info.productName cannot contain a slash"
 log "==> ${product_name} ${app_version}"
 
@@ -540,24 +545,55 @@ write_nfpm_config() {
   local dest="$1"
   local arch="$2"
   resolve_python
-  APP_NAME="$app_name" APP_VERSION="$app_version" GOARCH="$arch" NFPM_SRC="build/linux/nfpm/nfpm.yaml" NFPM_DEST="$dest" "$PYTHON" - <<'PY'
-import os, re
+  APP_NAME="$app_name" APP_VERSION="$app_version" GOARCH="$arch" \
+    APP_DESCRIPTION="$app_description" APP_COMPANY="$app_company" \
+    APP_HOMEPAGE="$app_homepage" APP_LICENSE="$app_license" PRODUCT_ID="$product_id" \
+    NFPM_SRC="build/linux/nfpm/nfpm.yaml" NFPM_DEST="$dest" "$PYTHON" - <<'PY'
+import os, re, sys
 from pathlib import Path
+
+def yaml_quote(value):
+    if "\n" in value or "\r" in value:
+        sys.exit("package metadata must be a single line")
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+def replace_one(text, pattern, repl, label):
+    text, count = re.subn(pattern, repl, text, count=1)
+    if count != 1:
+        sys.exit(f"build/linux/nfpm/nfpm.yaml is missing {label}")
+    return text
+
 text = Path(os.environ["NFPM_SRC"]).read_text(encoding="utf-8")
 app = os.environ["APP_NAME"]
-version = os.environ["APP_VERSION"]
-text = re.sub(r'(?m)^name:.*$', f'name: "{app}"', text, count=1)
-text = re.sub(r'(?m)^version:.*$', f'version: "{version}"', text, count=1)
-text = re.sub(r'src: "\./bin/[^"]+"', f'src: "./bin/{app}"', text, count=1)
-text = re.sub(r'dst: "/usr/local/bin/[^"]+"', f'dst: "/usr/local/bin/{app}"', text, count=1)
-text = re.sub(
+product_id = os.environ["PRODUCT_ID"]
+text = replace_one(text, r'(?m)^name:.*$', f'name: {yaml_quote(app)}', "name")
+text = replace_one(text, r'(?m)^version:.*$', f'version: {yaml_quote(os.environ["APP_VERSION"])}', "version")
+text = replace_one(text, r'(?m)^description:.*$', f'description: {yaml_quote(os.environ["APP_DESCRIPTION"])}', "description")
+text = replace_one(text, r'(?m)^vendor:.*$', f'vendor: {yaml_quote(os.environ["APP_COMPANY"])}', "vendor")
+text = replace_one(text, r'(?m)^homepage:.*$', f'homepage: {yaml_quote(os.environ["APP_HOMEPAGE"])}', "homepage")
+text = replace_one(text, r'(?m)^license:.*$', f'license: {yaml_quote(os.environ["APP_LICENSE"])}', "license")
+text = replace_one(text, r'src: "\./bin/[^"]+"', f'src: "./bin/{app}"', "binary source")
+text = replace_one(text, r'dst: "/usr/local/bin/[^"]+"', f'dst: "/usr/local/bin/{app}"', "binary destination")
+text = replace_one(
+    text,
     r'dst: "/usr/share/icons/hicolor/128x128/apps/[^"]+"',
     f'dst: "/usr/share/icons/hicolor/128x128/apps/{app}.png"',
-    text,
-    count=1,
+    "icon destination",
 )
-text = re.sub(r'src: "\./build/linux/[^"]+\.desktop"', f'src: "./build/linux/{app}.desktop"', text, count=1)
-text = re.sub(r'dst: "/usr/share/applications/[^"]+"', f'dst: "/usr/share/applications/{app}.desktop"', text, count=1)
+text = replace_one(text, r'src: "\./build/linux/[^"]+\.desktop"', f'src: "./build/linux/{app}.desktop"', "desktop source")
+text = replace_one(text, r'dst: "/usr/share/applications/[^"]+"', f'dst: "/usr/share/applications/{app}.desktop"', "desktop destination")
+text = replace_one(
+    text,
+    r'src: "\./build/linux/[^"]+\.metainfo\.xml"',
+    f'src: "./build/linux/{app}.metainfo.xml"',
+    "metainfo source",
+)
+text = replace_one(
+    text,
+    r'dst: "/usr/share/metainfo/[^"]+"',
+    f'dst: "/usr/share/metainfo/{product_id}.metainfo.xml"',
+    "metainfo destination",
+)
 Path(os.environ["NFPM_DEST"]).write_text(text, encoding="utf-8")
 PY
 }
@@ -596,6 +632,8 @@ build_linux() {
   export GOARCH="$arch"
 
   run "writing the Linux desktop file" "$wails3" task linux:generate:dotdesktop
+  resolve_python
+  run "writing the Linux AppStream metainfo" "$PYTHON" "$root/scripts/write-linux-metainfo.py"
   local nfpm_tmp
   nfpm_tmp="$(mktemp "${TMPDIR:-/tmp}/nfpm.XXXXXX")"
   write_nfpm_config "$nfpm_tmp" "$arch"

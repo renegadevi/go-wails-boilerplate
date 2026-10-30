@@ -71,6 +71,16 @@ Build on Windows, from PowerShell or Command Prompt:
 scripts\build.cmd build
 ```
 
+With no `--platforms` flag, the script builds the default for this computer. macOS builds the Mac app and a Windows exe. Linux builds the Linux binary. Windows builds the Windows exe.
+
+To build other platforms, pass a comma-separated list. On Linux, the Linux app and a Windows exe:
+
+```sh
+./scripts/build.sh build --platforms linux/amd64,windows/amd64
+```
+
+On an arm64 Linux machine, use `linux/arm64` in that list. The Mac app builds on macOS. Linux packages build on Linux, for this computer's architecture. On Windows, pass the same list to `scripts\build.cmd`. The list also works with `--dist`.
+
 Release:
 
 ```sh
@@ -123,17 +133,19 @@ Frameless windows draw `frontend/src/Toolbar.vue`. macOS traffic lights are in t
 - `build/config.yml` `info.productName` - window title and UI heading
 - `build/config.yml` `info.description` - app description and UI subtitle
 - `build/config.yml` `info.version` - UI and About (`X.Y.Z`)
+- `build/config.yml` `info.homepage` - project website in the Linux packages
+- `build/config.yml` `info.license` - SPDX license id in the Linux packages, such as `MIT`
 - `Taskfile.yml` `APP_NAME` - binary and package name
 - `build/config.yml` `dev_mode.log_level` - Wails watcher
 - `.env` `LOG_CONSOLE_LEVEL`, `LOG_FILE_LEVEL` - app log. Defaults are in `.env.sample`
 
-`config.go` and the frontend load `productName`, `description`, and `version` from `build/config.yml`. `scripts/build.sh` reads `APP_NAME`, `info.productName`, and `info.version`.
+`config.go` and the frontend load `productName`, `description`, and `version` from `build/config.yml`. `scripts/build.sh` reads `APP_NAME`, `info.productName`, `info.version`, `info.homepage`, and `info.license`.
 
 `wails3 tool msix` reads `build/config.yml` when it packages. `build/windows/msix` is not an input.
 
 ## Rename
 
-1. `build/config.yml`: `info.productName`, `info.description`, `info.companyName`, `info.version`, `info.productIdentifier`.
+1. `build/config.yml`: `info.productName`, `info.description`, `info.companyName`, `info.version`, `info.productIdentifier`, `info.homepage`, `info.license`.
 2. `APP_NAME` in `Taskfile.yml`.
 3. `wails3 task common:update:build-assets`. Then set `LSMinimumSystemVersion` to `14.0.0` in `build/darwin/Info.plist` and `build/darwin/Info.dev.plist`. The task resets it to 12. It does not rewrite `build/windows/msix`.
 4. Module path in `go.mod`, and `boilerplate/...` imports.

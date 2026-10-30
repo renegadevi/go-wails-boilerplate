@@ -13,7 +13,8 @@ priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
 description: "Wails + Vue 3 + Go boilerplate."
 vendor: "Your Name"
-homepage: "https://wails.io"
+# scripts/build.sh rewrites homepage and license from build/config.yml.
+homepage: "https://github.com/renegadevi/go-wails-boilerplate"
 license: "MIT"
 release: "1"
 
@@ -24,6 +25,9 @@ contents:
     dst: "/usr/share/icons/hicolor/128x128/apps/boilerplate.png"
   - src: "./build/linux/boilerplate.desktop"
     dst: "/usr/share/applications/boilerplate.desktop"
+  # AppStream metadata for the installed app. Opening the .deb reads Homepage and License above.
+  - src: "./build/linux/boilerplate.metainfo.xml"
+    dst: "/usr/share/metainfo/com.wails.boilerplate.metainfo.xml"
 
 # Default dependencies for the GTK4 + WebKitGTK 6.0 stack (Ubuntu 24.04+ / Debian 13+)
 depends:

@@ -206,6 +206,10 @@ On Linux, install `nsis` and `osslsigncode`. The Release workflow does this on U
 
 `--dist` builds `.deb`, `.rpm`, and `.AppImage` for the host architecture. Version: `info.version` (`X.Y.Z`).
 
+Opening a `.deb` in GNOME Software reads the project website and the license from the package control data. Those are `info.homepage` and `info.license`. The Wails template used `https://wails.io`; the package now uses the project URL.
+
+The `.deb` and `.rpm` also install AppStream metadata written by `scripts/write-linux-metainfo.py` from `info.license`, `info.description`, `info.version`, and `info.homepage`. After the package is installed, Software uses that file for the license, the website, and the release notes. The version row you see before install still says "No details for this release", because that screen only has the package version.
+
 `LINUX_PGP_KEY`: optional exported private key. Unsigned `.deb` and `.rpm` packages install.
 
 GTK 4 and WebKitGTK 6.0: see the [README](../README.md).
