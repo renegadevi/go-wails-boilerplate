@@ -3,6 +3,8 @@ import { computed, onMounted, ref } from 'vue'
 import { Frameless, Greet, Version } from '../bindings/boilerplate/app'
 import Toolbar from './Toolbar.vue'
 
+const title = __APP_TITLE__
+const description = __APP_DESCRIPTION__
 const version = ref('')
 const name = ref('')
 const greeting = ref('')
@@ -24,8 +26,8 @@ async function greet(): Promise<void> {
     <Toolbar v-if="frameless" />
     <div class="relative flex min-h-0 flex-1 items-center justify-center px-6 pb-16">
       <main class="relative flex w-full max-w-[26rem] flex-col items-center text-center">
-        <h1 class="m-0 text-[22px] font-medium tracking-tight">Boilerplate</h1>
-        <p class="m-0 mt-2 text-[13px] text-muted">Wails + Vue 3 + Go foundation.</p>
+        <h1 class="m-0 text-[22px] font-medium tracking-tight">{{ title }}</h1>
+        <p class="m-0 mt-2 text-[13px] text-muted">{{ description }}</p>
         <form class="composer" @submit.prevent="greet">
           <input v-model="name" placeholder="Your name" autocomplete="off" spellcheck="false" />
           <button type="submit" :class="{ ready: canGreet }">Greet</button>

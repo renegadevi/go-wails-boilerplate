@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  wails3 tool msix does not read this file. Packaging fills the same fields
+  from build/config.yml: info.companyName, info.productName, info.productIdentifier,
+  info.version, and info.description.
+-->
 <MsixPackagingToolTemplate
     xmlns="http://schemas.microsoft.com/msix/packaging/msixpackagingtool/template/2022">
     <Settings
@@ -8,29 +13,27 @@
         AllowPromptForPassword="false">
     </Settings>
     <Installer
-        Path="boilerplate"
+        Path="{{.ExecutablePath}}"
         Arguments=""
-        InstallLocation="C:\Program Files\Your Name\Boilerplate">
+        InstallLocation="C:\Program Files\{{.ProductCompany}}\{{.ProductName}}">
     </Installer>
     <PackageInformation
-        PackageName="Boilerplate"
-        PackageDisplayName="Boilerplate"
-        PublisherName="CN=Your Name"
-        PublisherDisplayName="Your Name"
-        Version="0.1.0.0"
-        PackageDescription="Wails + Vue 3 + Go foundation.">
+        PackageName="{{.ProductName}}"
+        PackageDisplayName="{{.ProductName}}"
+        PublisherName="{{.Publisher}}"
+        PublisherDisplayName="{{.ProductCompany}}"
+        Version="{{.ProductVersion}}.0"
+        PackageDescription="{{.ProductDescription}}">
         <Capabilities>
             <Capability Name="runFullTrust" />
-            
         </Capabilities>
         <Applications>
             <Application
-                Id="com.wails.boilerplate"
-                Description="Wails + Vue 3 + Go foundation."
-                DisplayName="Boilerplate"
-                ExecutableName="boilerplate"
+                Id="{{.ProductIdentifier}}"
+                Description="{{.ProductDescription}}"
+                DisplayName="{{.ProductName}}"
+                ExecutableName="{{.ExecutableName}}"
                 EntryPoint="Windows.FullTrustApplication">
-                
             </Application>
         </Applications>
         <Resources>
@@ -41,14 +44,14 @@
         </Dependencies>
         <Properties>
             <Framework>false</Framework>
-            <DisplayName>Boilerplate</DisplayName>
-            <PublisherDisplayName>Your Name</PublisherDisplayName>
-            <Description>Wails + Vue 3 + Go foundation.</Description>
+            <DisplayName>{{.ProductName}}</DisplayName>
+            <PublisherDisplayName>{{.ProductCompany}}</PublisherDisplayName>
+            <Description>{{.ProductDescription}}</Description>
             <Logo>Assets\AppIcon.png</Logo>
         </Properties>
     </PackageInformation>
-    <SaveLocation PackagePath="boilerplate.msix" />
+    <SaveLocation PackagePath="{{.OutputPath}}" />
     <PackageIntegrity>
-        <CertificatePath></CertificatePath>
+        <CertificatePath>{{.CertificatePath}}</CertificatePath>
     </PackageIntegrity>
 </MsixPackagingToolTemplate>

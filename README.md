@@ -83,7 +83,7 @@ go test ./...
 
 - `main.go` - window bootstrap
 - `app.go` - `Version`, `Greet`
-- `config.go` - name and version from `build/config.yml`
+- `config.go` - name, description, and version from `build/config.yml`
 - `window.go` - window template
 - `menu.go` - native menu
 - `internal/applog` - process log
@@ -109,18 +109,20 @@ Frameless windows draw `frontend/src/Toolbar.vue`. macOS traffic lights are in t
 
 ## Configuration
 
-- `build/config.yml` `info.productName` - window title
+- `build/config.yml` `info.productName` - window title and UI heading
+- `build/config.yml` `info.description` - app description and UI subtitle
 - `build/config.yml` `info.version` - UI and About (`X.Y.Z`)
 - `Taskfile.yml` `APP_NAME` - binary and package name
 
-`config.go` loads `productName` and `version` from `build/config.yml`. `scripts/build.sh` reads `APP_NAME` and `info.version`.
+`config.go` and the frontend load `productName`, `description`, and `version` from `build/config.yml`. `scripts/build.sh` reads `APP_NAME`, `info.productName`, and `info.version`.
+
+`wails3 tool msix` reads `build/config.yml` when it packages. `build/windows/msix` is not an input.
 
 ## Rename
 
-1. `build/config.yml`: `info.productName`, `info.version`, `info.productIdentifier`.
+1. `build/config.yml`: `info.productName`, `info.description`, `info.companyName`, `info.version`, `info.productIdentifier`.
 2. `APP_NAME` in `Taskfile.yml`.
-3. `wails3 task common:update:build-assets`. Then set `LSMinimumSystemVersion` to `14.0.0` in `build/darwin/Info.plist` and `build/darwin/Info.dev.plist`. The task resets it to 12.
+3. `wails3 task common:update:build-assets`. Then set `LSMinimumSystemVersion` to `14.0.0` in `build/darwin/Info.plist` and `build/darwin/Info.dev.plist`. The task resets it to 12. It does not rewrite `build/windows/msix`.
 4. Module path in `go.mod`, and `boilerplate/...` imports.
-5. `title` in `frontend/index.html`, heading in `frontend/src/App.vue`.
 
 Icon: `build/appicon.png`.

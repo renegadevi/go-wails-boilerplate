@@ -11,7 +11,7 @@ version: "0.1.0"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "Wails + Vue 3 + Go foundation."
+description: "Wails + Vue 3 + Go boilerplate."
 vendor: "Your Name"
 homepage: "https://wails.io"
 license: "MIT"

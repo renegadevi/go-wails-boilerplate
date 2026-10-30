@@ -13,7 +13,7 @@ func main() {
 	service := NewApp()
 	app := application.New(application.Options{
 		Name:        AppTitle,
-		Description: "Wails + Vue 3 + Go foundation.",
+		Description: AppDescription,
 		Services: []application.Service{
 			application.NewService(service),
 		},
