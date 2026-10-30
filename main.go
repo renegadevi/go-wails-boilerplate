@@ -6,6 +6,7 @@ import (
 	"boilerplate/internal/applog"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 //go:embed all:frontend/dist
@@ -32,7 +33,12 @@ func main() {
 	// An unset menu on macOS is replaced with the Wails default menu.
 	// Templates with no menu still set an empty one.
 	app.Menu.Set(applicationMenu(app))
-	app.Window.NewWithOptions(windowOptions())
+	window := app.Window.NewWithOptions(windowOptions())
+	// The GTK window exists by the time it is shown. Earlier than that,
+	// NativeWindow is still nil.
+	window.OnWindowEvent(events.Common.WindowShow, func(*application.WindowEvent) {
+		hideLinuxFramelessEdge(window)
+	})
 
 	err := app.Run()
 	if err != nil {

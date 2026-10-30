@@ -140,3 +140,29 @@ input:focus-visible {
   background: #c42b1c;
   color: #fff;
 }
+
+/* Linux caption buttons are circles inset from the corner. Hover is a
+   lighter disc on every button, including close. */
+.titlebar--linux .titlebar-controls {
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+}
+
+.titlebar--linux .titlebar-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+}
+
+.titlebar--linux .titlebar-btn:hover,
+.titlebar--linux .titlebar-btn.close:hover {
+  background: #32363b;
+  color: #fff;
+}
+
+.titlebar--linux .titlebar-btn:active,
+.titlebar--linux .titlebar-btn.close:active {
+  background: #3c4147;
+  color: #fff;
+}

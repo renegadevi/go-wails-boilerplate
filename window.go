@@ -6,6 +6,19 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
+// windowBackground matches --color-bg in frontend/src/style.css.
+// Linux paints the GTK window with it. A light theme otherwise leaves a
+// pale line along the top of a frameless window.
+const (
+	windowBackgroundR uint8 = 20
+	windowBackgroundG uint8 = 22
+	windowBackgroundB uint8 = 24
+)
+
+// hideLinuxFramelessEdge paints over that line. Other systems leave it empty.
+// window_linux.go fills it in.
+var hideLinuxFramelessEdge = func(*application.WebviewWindow) {}
+
 const (
 	// WindowFrame is a system window with no menu.
 	WindowFrame = "frame"
@@ -72,7 +85,7 @@ func windowOptions() application.WebviewWindowOptions {
 		Height:           800,
 		MinWidth:         800,
 		MinHeight:        600,
-		BackgroundColour: application.NewRGB(20, 22, 24),
+		BackgroundColour: application.NewRGB(windowBackgroundR, windowBackgroundG, windowBackgroundB),
 		Frameless:        nativeFrameless,
 		URL:              "/",
 		// A dark window lets Windows paint a dark menu bar when the system

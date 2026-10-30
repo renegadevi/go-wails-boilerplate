@@ -6,6 +6,8 @@ import { Title } from '../bindings/boilerplate/app'
 const title = ref('')
 // The tall Mac bar has to be in the first paint. The user agent is enough for that.
 const mac = ref(navigator.userAgent.includes('Macintosh'))
+// Linux caption buttons are circles. Hover is a lighter disc, including close.
+const linux = ref(!mac.value && navigator.userAgent.includes('Linux'))
 const maximised = ref(false)
 
 async function syncMaximised(): Promise<void> {
@@ -28,7 +30,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <header class="titlebar" :class="{ 'titlebar--mac': mac }" @dblclick="toggleMaximise">
+  <header class="titlebar" :class="{ 'titlebar--mac': mac, 'titlebar--linux': linux }" @dblclick="toggleMaximise">
     <div v-if="mac" class="titlebar-lights" />
     <div class="titlebar-title">{{ title }}</div>
     <div v-if="!mac" class="titlebar-controls" @dblclick.stop>

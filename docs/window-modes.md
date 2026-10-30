@@ -64,28 +64,28 @@ Custom toolbar. No menu.
 
 ## Linux
 
-Same frame rules as Windows. The native menu is part of the system frame, so a frameless window has the toolbar and no menu bar.
+Same frame rules as Windows. The native menu is part of the system frame, so a frameless window has the toolbar and no menu bar. `WindowFramelessMenu` and `WindowFrameless` look the same here.
 
 ### WindowFrame
 
 System frame. No menu.
 
-`screenshots/linux-WindowFrame.png`
+![WindowFrame on Linux](screenshots/linux-WindowFrame.png)
 
 ### WindowFrameMenu
 
 System frame. Edit and Window menus.
 
-`screenshots/linux-WindowFrameMenu.png`
+![WindowFrameMenu on Linux](screenshots/linux-WindowFrameMenu.png)
 
 ### WindowFramelessMenu
 
 Custom toolbar. No menu bar. Minimise, maximise, and close are in the toolbar.
 
-`screenshots/linux-WindowFramelessMenu.png`
+![WindowFramelessMenu on Linux](screenshots/linux-WindowFramelessMenu.png)
 
 ### WindowFrameless
 
 Custom toolbar. No menu.
 
-`screenshots/linux-WindowFrameless.png`
+![WindowFrameless on Linux](screenshots/linux-WindowFrameless.png)

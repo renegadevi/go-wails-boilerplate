@@ -25,6 +25,18 @@ Every window mode on macOS, Windows, and Linux: [Window modes](docs/window-modes
 - Wails v3 CLI
 - macOS 14+ to run the Mac app
 
+### Linux libraries
+
+On Linux, install these before the Wails CLI. The CLI build needs them.
+
+Debian/Ubuntu:
+
+```sh
+sudo apt install build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
+```
+
+Fedora: `gtk4-devel`, `webkitgtk6.0-devel`. Arch: `gtk4`, `webkitgtk-6.0`.
+
 ### Wails CLI
 
 ```sh
@@ -38,16 +50,6 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 ```
 
 Check with `wails3 version`. The v2 `wails` binary is separate.
-
-### Linux libraries
-
-Debian/Ubuntu:
-
-```sh
-sudo apt install build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
-```
-
-Fedora: `gtk4-devel`, `webkitgtk6.0-devel`. Arch: `gtk4`, `webkitgtk-6.0`.
 
 ## Build
 
