@@ -22,10 +22,20 @@ Local packages for this machine:
 ./scripts/build.sh build
 ```
 
+On Windows, PowerShell and Command Prompt do not run `.sh` files. Windows asks which program should open the file, and the build never starts. Use the launcher instead. It runs `scripts/build.sh` with Git Bash:
+
+```bat
+scripts\build.cmd build
+```
+
 Signed release packages:
 
 ```sh
 ./scripts/build.sh build --dist
+```
+
+```bat
+scripts\build.cmd build --dist
 ```
 
 Targets:
@@ -35,6 +45,8 @@ Targets:
 ./scripts/build.sh build --platforms darwin/arm64,windows/amd64
 ./scripts/build.sh build --dist --platforms darwin/arm64,windows/amd64
 ```
+
+On Windows, pass the same arguments to `scripts\build.cmd`.
 
 `darwin/arm64`, `darwin/amd64`, `windows/amd64`, `windows/arm64`, `linux/amd64`, `linux/arm64`.
 
@@ -52,7 +64,7 @@ Linux builds on Linux, for the host architecture. On macOS the script skips Linu
 
 Local Mac `.app`: ad-hoc signature. Gatekeeper blocks it on other Macs.
 
-Local Windows `.exe`: unsigned. SmartScreen warns. Requires WebView2, which current Windows 11 includes.
+Local Windows `.exe`: unsigned. SmartScreen warns. Requires WebView2, which current Windows 11 includes. `scripts\build.cmd build --dist` is the signed exe and the NSIS installer, built on Windows. See [Signing](#signing).
 
 ## Release
 
@@ -71,6 +83,19 @@ dist/v0.1.0_261027220841/
     boilerplate-v0.1.0-amd64.exe
     boilerplate-v0.1.0-amd64-setup.exe
 ```
+
+Windows host:
+
+```text
+dist/v0.1.0_261027220841/
+  LICENSE
+  checksums.txt
+  windows/
+    boilerplate-v0.1.0-amd64.exe
+    boilerplate-v0.1.0-amd64-setup.exe
+```
+
+An arm64 PC writes `arm64` in those file names. The script builds the Windows app for this PC. It skips macOS and Linux.
 
 Linux host:
 
@@ -134,22 +159,48 @@ Set `APPLE_SIGNING_IDENTITY` when more than one Developer ID is installed. With 
 
 ### Windows
 
-On a Mac:
+On Windows, `scripts\build.cmd build` writes an unsigned exe. `scripts\build.cmd build --dist` writes the signed exe and the NSIS installer. Use the second command to test the installer on a Windows PC, or to produce the files you ship.
+
+`--dist` stops before compiling until `signtool` and `makensis` are on PATH and `build/dist.env` points at a `.pfx`. Open a new terminal after changing PATH. Git Bash reads the Windows PATH.
+
+`signtool` comes with the Windows SDK. The installer leaves it off PATH. In the Visual Studio Installer, add **Windows SDK** or **Windows SDK Signing Tools for Desktop Apps**. The tool is `C:\Program Files (x86)\Windows Kits\10\bin\<version>\x64\signtool.exe`. Add that `x64` folder to PATH. `where signtool` prints the path.
+
+`makensis` is [NSIS](https://nsis.sourceforge.io/).
+
+```bat
+winget install NSIS.NSIS
+```
+
+`where makensis` prints the path.
+
+Copy `build/dist.env.example` to `build/dist.env`. Keep the `.pfx` outside the repository.
+
+```sh
+WINDOWS_CERT_PATH="C:\Users\you\certificate.pfx"
+WINDOWS_CERT_PASSWORD="the-password"
+```
+
+A self-signed `.pfx` is enough to run the signed installer on this PC. SmartScreen still warns. Create one in PowerShell:
+
+```powershell
+$cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=Dev Code Signing" -CertStoreLocation Cert:\CurrentUser\My
+$pwd = ConvertTo-SecureString -String "the-password" -Force -AsPlainText
+Export-PfxCertificate -Cert $cert -FilePath "$env:USERPROFILE\dev-codesign.pfx" -Password $pwd
+```
+
+A purchased Authenticode `.pfx` uses the same two variables. A new standard certificate can still trigger SmartScreen until that publisher has reputation. EV or Azure Trusted Signing is faster. A USB token or Azure Trusted Signing needs `signtool` on Windows.
+
+Timestamp server default: `http://timestamp.digicert.com`. Signing contacts that server, so `--dist` needs a network connection.
+
+Order: sign the `.exe`, build the NSIS installer around that file, sign the installer. SmartScreen checks the download and the program the installer writes.
+
+On a Mac, the same `WINDOWS_CERT_PATH` and `WINDOWS_CERT_PASSWORD` apply. The script signs with `osslsigncode` instead of `signtool`:
 
 ```sh
 brew install makensis osslsigncode
 ```
 
-```sh
-WINDOWS_CERT_PATH="/path/to/certificate.pfx"
-WINDOWS_CERT_PASSWORD="the-password"
-```
-
-Timestamp server default: `http://timestamp.digicert.com`. On Windows the script uses `signtool` from the Windows SDK.
-
-Order: sign the `.exe`, build the NSIS installer around that file, sign the installer. SmartScreen checks the download and the program the installer writes.
-
-A new standard certificate can still trigger SmartScreen until that publisher has reputation. EV or Azure Trusted Signing is faster. A self-signed `.pfx` keeps the warning. A USB token or Azure Trusted Signing needs `signtool` on Windows.
+On Linux, install `nsis` and `osslsigncode`. The Release workflow does this on Ubuntu.
 
 ### Linux
 
@@ -196,6 +247,6 @@ When the minutes run out, hosted jobs stop. `./scripts/build.sh build --dist` on
 
 | Goal | Also required |
 | --- | --- |
-| `wails3 dev`, `./scripts/build.sh build` | Go, Node, Wails CLI. No `build/dist.env`. No Actions secrets. |
-| `./scripts/build.sh build --dist` | `build/dist.env`. Linux packages need a Linux machine. |
+| `wails3 dev`, `./scripts/build.sh build` | Go, Node, Wails CLI. No `build/dist.env`. No Actions secrets. On Windows: `scripts\build.cmd build`. |
+| `./scripts/build.sh build --dist` | `build/dist.env`. Linux packages need a Linux machine. On Windows: `scripts\build.cmd build --dist`, plus `signtool`, NSIS, and `WINDOWS_CERT_PATH`. |
 | Actions, including Linux from a Mac | Secrets above. The workflow file is already in the repo. Renaming the app does not require a YAML edit. |

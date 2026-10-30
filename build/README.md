@@ -10,6 +10,6 @@ Packager files for `wails3 build` and `wails3 package` (`Taskfile.yml`).
 - `dist.env.example` - signing values for `--dist`. Copy to `dist.env` (gitignored)
 
 `bin/` at the repo root: Wails intermediates, gitignored.
-`dist/` at the repo root: `scripts/build.sh` output, gitignored.
+`dist/` at the repo root: `scripts/build.sh` output, gitignored. On Windows, run `scripts\build.cmd`.
 
 Details: [Building and distributing](../docs/building.md).

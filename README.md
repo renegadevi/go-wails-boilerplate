@@ -59,10 +59,16 @@ Development:
 wails3 dev
 ```
 
-Build:
+Build on macOS or Linux:
 
 ```sh
 ./scripts/build.sh build
+```
+
+Build on Windows, from PowerShell or Command Prompt:
+
+```bat
+scripts\build.cmd build
 ```
 
 Release:
@@ -71,7 +77,11 @@ Release:
 ./scripts/build.sh build --dist
 ```
 
-Details: [Building and distributing](docs/building.md).
+```bat
+scripts\build.cmd build --dist
+```
+
+On Windows, `--dist` needs `signtool`, NSIS, and `build\dist.env`. Details: [Building and distributing](docs/building.md).
 
 ## Test
 
@@ -89,7 +99,7 @@ go test ./...
 - `internal/applog` - process log
 - `frontend/` - Vue app
 - `Taskfile.yml` - Wails tasks
-- `scripts/build.sh` - build and release
+- `scripts/build.sh` - build and release. On Windows: `scripts\build.cmd`
 - `docs/building.md` - packages and signing
 
 ## Window

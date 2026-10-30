@@ -5,6 +5,7 @@
 # Windows exe and NSIS installer, and on Linux a deb, an rpm, and an AppImage.
 # --dist reads build/dist.env and stops before compiling when signing
 # credentials or tools are missing. A normal build does not use them.
+# On Windows, run scripts\build.cmd. PowerShell does not execute .sh files.
 
 set -euo pipefail
 
@@ -16,10 +17,70 @@ die() {
   exit 1
 }
 
+log() {
+  printf '%s\n' "$*"
+}
+
+# Quiet steps (notarization, signing, wails itself) otherwise look like a hung prompt.
+beat_pid=""
+stop_beat() {
+  local pid="${beat_pid}"
+  beat_pid=""
+  if [[ -z "$pid" ]]; then
+    return 0
+  fi
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  return 0
+}
+trap stop_beat EXIT
+
+run() {
+  local label="$1"
+  shift
+  log "==> ${label}"
+  (
+    trap - EXIT
+    seconds=0
+    while true; do
+      sleep 5
+      seconds=$((seconds + 5))
+      printf '    still working: %s (%ss)\n' "$label" "$seconds"
+    done
+  ) &
+  beat_pid=$!
+  local status=0
+  "$@" || status=$?
+  stop_beat
+  return "${status}"
+}
+
+PYTHON=""
+resolve_python() {
+  if [[ -n "$PYTHON" ]]; then
+    return 0
+  fi
+  local candidate
+  for candidate in python3 python; do
+    command -v "$candidate" >/dev/null 2>&1 || continue
+    candidate="$(command -v "$candidate")"
+    # The Microsoft Store alias is named python3 and does not run Python.
+    case "$candidate" in
+      *[Ww]indows[Aa]pps/*|*[Ww]indows[Aa]pps\\*) continue ;;
+    esac
+    if "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info[0] >= 3 else 1)' >/dev/null 2>&1; then
+      PYTHON="$candidate"
+      return 0
+    fi
+  done
+  die "python 3 is not installed"
+}
+
 read_yaml_value() {
   local file="$1"
   local pattern="$2"
-  python3 - "$file" "$pattern" <<'PY'
+  resolve_python
+  "$PYTHON" - "$file" "$pattern" <<'PY'
 import re, sys
 file, pattern = sys.argv[1], sys.argv[2]
 text = open(file, encoding="utf-8").read()
@@ -85,18 +146,22 @@ default_platforms() {
 }
 
 usage() {
+  local cmd="$0"
+  if [[ "$host_os" == "windows" ]]; then
+    cmd='scripts\build.cmd'
+  fi
   cat <<EOF
-Usage: $0 build [--dist] [--platforms os/arch,os/arch]
+Usage: ${cmd} build [--dist] [--platforms os/arch,os/arch]
 
   build       Local binaries. The Mac app is ad-hoc signed.
   --dist      Signed packages. Fails if certificates or tools are missing.
   --platforms Comma-separated list. Defaults to what this computer can build.
 
 Examples:
-  $0 build
-  $0 build --platforms darwin/arm64
-  $0 build --dist
-  $0 build --dist --platforms darwin/arm64,windows/amd64
+  ${cmd} build
+  ${cmd} build --platforms darwin/arm64
+  ${cmd} build --dist
+  ${cmd} build --dist --platforms darwin/arm64,windows/amd64
 EOF
 }
 
@@ -133,6 +198,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+started="$(date +%s)"
+if [[ "$dist" == true ]]; then
+  log "==> release build"
+else
+  log "==> local build"
+fi
+
 load_dist_env
 
 app_name="$(read_yaml_value Taskfile.yml '(?m)^  APP_NAME: \"([^\"]+)\"')"
@@ -140,6 +212,7 @@ app_version="$(read_yaml_value build/config.yml '(?m)^  version: \"([^\"]+)\"')"
 product_name="$(read_yaml_value build/config.yml '(?m)^  productName: \"([^\"]+)\"')"
 [[ -n "$app_name" && -n "$app_version" && -n "$product_name" ]] || die "APP_NAME, info.productName, and info.version must be set"
 [[ "$product_name" != */* ]] || die "info.productName cannot contain a slash"
+log "==> ${product_name} ${app_version}"
 
 if command -v wails3 >/dev/null 2>&1; then
   wails3="$(command -v wails3)"
@@ -208,7 +281,12 @@ resolve_apple_identity() {
   add_problem "Several Developer ID certificates are installed. Set APPLE_SIGNING_IDENTITY in build/dist.env to the one to use."
 }
 
+notary_profile_ok() {
+  xcrun notarytool history --keychain-profile "$APPLE_NOTARY_KEYCHAIN_PROFILE" >/dev/null </dev/null
+}
+
 preflight_darwin_dist() {
+  log "==> checking macOS signing"
   [[ -f "$root/build/darwin/entitlements.plist" ]] || add_problem "missing build/darwin/entitlements.plist"
   command -v /usr/bin/codesign >/dev/null 2>&1 || add_problem "codesign is not available. Install the Xcode command line tools."
   xcrun --find notarytool >/dev/null 2>&1 || add_problem "notarytool is not available. Install the Xcode command line tools."
@@ -217,12 +295,13 @@ preflight_darwin_dist() {
     add_problem "Set APPLE_NOTARY_KEYCHAIN_PROFILE in build/dist.env. Create it once with: xcrun notarytool store-credentials \"PROFILE\" --apple-id \"you@example.com\" --team-id \"TEAMID\" --password \"app-specific-password\""
     return
   fi
-  if ! xcrun notarytool history --keychain-profile "$APPLE_NOTARY_KEYCHAIN_PROFILE" >/dev/null </dev/null; then
+  if ! run "checking the Apple notary profile" notary_profile_ok; then
     add_problem "Notary profile '${APPLE_NOTARY_KEYCHAIN_PROFILE}' failed. Check APPLE_NOTARY_KEYCHAIN_PROFILE, or create it with xcrun notarytool store-credentials."
   fi
 }
 
 preflight_windows_dist() {
+  log "==> checking Windows signing"
   local ts_tool=""
   if [[ "$host_os" == "windows" ]]; then
     if command -v signtool.exe >/dev/null 2>&1 || command -v signtool >/dev/null 2>&1; then
@@ -238,7 +317,13 @@ preflight_windows_dist() {
       add_problem "osslsigncode is not installed. On macOS: brew install osslsigncode"
     fi
   fi
-  command -v makensis >/dev/null 2>&1 || add_problem "makensis is not installed. On macOS: brew install makensis"
+  if ! command -v makensis >/dev/null 2>&1; then
+    if [[ "$host_os" == "windows" ]]; then
+      add_problem "makensis is not on PATH. Install NSIS from https://nsis.sourceforge.io/ and reopen the terminal."
+    else
+      add_problem "makensis is not installed. On macOS: brew install makensis"
+    fi
+  fi
   if [[ -z "${WINDOWS_CERT_PATH:-}" || ! -f "${WINDOWS_CERT_PATH}" ]]; then
     add_problem "Set WINDOWS_CERT_PATH in build/dist.env to a code signing .pfx file. A self-signed certificate still shows SmartScreen."
   fi
@@ -247,6 +332,8 @@ preflight_windows_dist() {
 if [[ ${#requested[@]} -eq 0 ]]; then
   die "no platforms selected"
 fi
+
+log "==> platforms: ${requested[*]}"
 
 buildable=()
 skipped=0
@@ -286,7 +373,11 @@ done
 
 if [[ -n "$problems" ]]; then
   printf '%s' "$problems" >&2
-  echo "Copy build/dist.env.example to build/dist.env and fill in the values. A local build does not need them: $0 build" >&2
+  if [[ "$host_os" == "windows" ]]; then
+    echo "Copy build/dist.env.example to build/dist.env and fill in the values. A local build does not need them: scripts\\build.cmd build" >&2
+  else
+    echo "Copy build/dist.env.example to build/dist.env and fill in the values. A local build does not need them: $0 build" >&2
+  fi
   exit 1
 fi
 
@@ -299,30 +390,46 @@ fi
 
 stamp="$(date +%y%m%d%H%M%S)"
 out="dist/v${app_version}_${stamp}"
+log "==> output ${out}"
 mkdir -p "$out"
 cp LICENSE "$out/LICENSE"
+
+to_windows_path() {
+  local path="$1"
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -w "$path"
+    return
+  fi
+  printf '%s\n' "$path"
+}
 
 sign_windows_file() {
   local input="$1"
   local ts="${WINDOWS_TIMESTAMP_URL:-http://timestamp.digicert.com}"
   local signed="${input}.signed"
+  local label="signing $(basename "$input")"
   if [[ "$host_os" == "windows" ]]; then
     local tool="signtool"
     if command -v signtool.exe >/dev/null 2>&1; then
       tool="signtool.exe"
     fi
+    local target cert
+    target="$(to_windows_path "$input")"
+    cert="$(to_windows_path "$WINDOWS_CERT_PATH")"
+    # Git Bash rewrites a single leading slash into a Windows path, so /fd
+    # would become C:\Program Files\Git\fd. A doubled slash arrives as /fd.
     if [[ -n "${WINDOWS_CERT_PASSWORD:-}" ]]; then
-      "$tool" sign /fd SHA256 /td SHA256 /tr "$ts" /f "$WINDOWS_CERT_PATH" /p "$WINDOWS_CERT_PASSWORD" "$input"
+      run "$label" "$tool" sign //fd SHA256 //td SHA256 //tr "$ts" //f "$cert" //p "$WINDOWS_CERT_PASSWORD" "$target"
     else
-      "$tool" sign /fd SHA256 /td SHA256 /tr "$ts" /f "$WINDOWS_CERT_PATH" "$input"
+      run "$label" "$tool" sign //fd SHA256 //td SHA256 //tr "$ts" //f "$cert" "$target"
     fi
     return
   fi
   rm -f "$signed"
   if [[ -n "${WINDOWS_CERT_PASSWORD:-}" ]]; then
-    osslsigncode sign -pkcs12 "$WINDOWS_CERT_PATH" -pass "$WINDOWS_CERT_PASSWORD" -n "$product_name" -h sha256 -ts "$ts" -in "$input" -out "$signed"
+    run "$label" osslsigncode sign -pkcs12 "$WINDOWS_CERT_PATH" -pass "$WINDOWS_CERT_PASSWORD" -n "$product_name" -h sha256 -ts "$ts" -in "$input" -out "$signed"
   else
-    osslsigncode sign -pkcs12 "$WINDOWS_CERT_PATH" -n "$product_name" -h sha256 -ts "$ts" -in "$input" -out "$signed"
+    run "$label" osslsigncode sign -pkcs12 "$WINDOWS_CERT_PATH" -n "$product_name" -h sha256 -ts "$ts" -in "$input" -out "$signed"
   fi
   mv -f "$signed" "$input"
 }
@@ -331,23 +438,25 @@ notarize_and_staple() {
   local target="$1"
   local submit="$target"
   local zip=""
+  local name
+  name="$(basename "$target")"
   if [[ -d "$target" ]]; then
     zip="$(mktemp -t notary)"
     rm -f "$zip"
     zip="${zip}.zip"
-    ditto -c -k --keepParent "$target" "$zip"
+    run "zipping ${name} for notarization" ditto -c -k --keepParent "$target" "$zip"
     submit="$zip"
   fi
-  xcrun notarytool submit "$submit" --keychain-profile "$APPLE_NOTARY_KEYCHAIN_PROFILE" --wait
-  xcrun stapler staple "$target"
+  run "notarizing ${name} (Apple often takes a few minutes)" \
+    xcrun notarytool submit "$submit" --keychain-profile "$APPLE_NOTARY_KEYCHAIN_PROFILE" --wait
+  run "stapling ${name}" xcrun stapler staple "$target"
   [[ -n "$zip" ]] && rm -f "$zip"
-  xcrun stapler validate "$target"
+  run "checking the notarization ticket on ${name}" xcrun stapler validate "$target"
 }
 
 build_darwin() {
   local arch="$1"
-  echo "building darwin/${arch}"
-  "$wails3" package GOOS=darwin ARCH="$arch"
+  run "compiling darwin/${arch}" "$wails3" package GOOS=darwin ARCH="$arch"
   local app_path="bin/${app_name}.app"
   [[ -d "$app_path" ]] || die "missing Mac app ${app_path}"
   mkdir -p "$out/macos"
@@ -356,23 +465,22 @@ build_darwin() {
 
   if [[ "$dist" != true ]]; then
     mv "$app_path" "$app_dest"
-    /usr/bin/xattr -cr "$app_dest"
-    /usr/bin/codesign --force --deep --sign - "$app_dest"
-    /usr/bin/codesign --verify --deep --strict "$app_dest"
+    run "clearing Finder metadata" /usr/bin/xattr -cr "$app_dest"
+    run "ad-hoc signing the Mac app" /usr/bin/codesign --force --deep --sign - "$app_dest"
+    run "verifying the Mac app signature" /usr/bin/codesign --verify --deep --strict "$app_dest"
     return
   fi
 
-  /usr/bin/xattr -cr "$app_path"
-  /usr/bin/codesign --force --timestamp --options runtime \
+  run "clearing Finder metadata" /usr/bin/xattr -cr "$app_path"
+  run "signing the Mac app" /usr/bin/codesign --force --timestamp --options runtime \
     --entitlements "$root/build/darwin/entitlements.plist" \
     --sign "$APPLE_SIGNING_IDENTITY" \
     "$app_path"
-  /usr/bin/codesign --verify --deep --strict "$app_path"
-  echo "notarizing ${app_path}"
+  run "verifying the Mac app signature" /usr/bin/codesign --verify --deep --strict "$app_path"
   notarize_and_staple "$app_path"
 
   rm -f "bin/${app_name}.dmg"
-  "$wails3" tool package --format dmg --name "$app_name" --out "bin" \
+  run "creating the DMG" "$wails3" tool package --format dmg --name "$app_name" --out "bin" \
     --background "build/darwin/dmg-background.png" \
     --volume-icon "build/darwin/icons.icns" \
     --file-icon "build/darwin/dmg-file-icon.icns" \
@@ -380,49 +488,50 @@ build_darwin() {
     --window-height 380
   local dmg_path="bin/${app_name}.dmg"
   [[ -f "$dmg_path" ]] || die "missing DMG ${dmg_path}"
-  /usr/bin/codesign --force --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$dmg_path"
-  echo "notarizing ${dmg_path}"
+  run "signing the DMG" /usr/bin/codesign --force --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$dmg_path"
   notarize_and_staple "$dmg_path"
 
-  ditto "$app_path" "$app_dest"
+  run "copying the Mac app" ditto "$app_path" "$app_dest"
   local dmg_dest="$out/macos/${product_name}.dmg"
   cp "$dmg_path" "$dmg_dest"
-  /usr/bin/codesign --verify --deep --strict "$app_dest"
-  xcrun stapler validate "$app_dest"
-  xcrun stapler validate "$dmg_dest"
+  run "verifying the signed Mac app" /usr/bin/codesign --verify --deep --strict "$app_dest"
+  run "checking the notarization ticket on the Mac app" xcrun stapler validate "$app_dest"
+  run "checking the notarization ticket on the DMG" xcrun stapler validate "$dmg_dest"
+  log "==> checking Gatekeeper"
   spctl --assess --verbose=2 "$app_dest"
   spctl --assess --type open --context context:primary-signature --verbose "$dmg_dest"
 }
 
 build_windows() {
   local arch="$1"
-  echo "building windows/${arch}"
-  "$wails3" build GOOS=windows ARCH="$arch"
+  run "compiling windows/${arch}" "$wails3" build GOOS=windows ARCH="$arch"
   local exe="bin/${app_name}.exe"
   [[ -f "$exe" ]] || die "missing ${exe}"
   mkdir -p "$out/windows"
   local portable="$out/windows/${app_name}-v${app_version}-${arch}.exe"
 
   if [[ "$dist" != true ]]; then
+    log "==> copying windows/${arch}"
     cp "$exe" "$portable"
     return
   fi
 
-  echo "signing ${exe}"
   sign_windows_file "$exe"
-  "$wails3" generate webview2bootstrapper -dir "$root/build/windows/nsis"
+  run "downloading the WebView2 bootstrapper" "$wails3" generate webview2bootstrapper -dir "$root/build/windows/nsis"
   local arg_name="ARG_WAILS_AMD64_BINARY"
   if [[ "$arch" == "arm64" ]]; then
     arg_name="ARG_WAILS_ARM64_BINARY"
   fi
+  local binary
+  binary="$(to_windows_path "${root}/bin/${app_name}.exe")"
   (
     cd "$root/build/windows/nsis"
-    makensis -D"${arg_name}=${root}/bin/${app_name}.exe" project.nsi
+    run "creating the NSIS installer" makensis -D"${arg_name}=${binary}" project.nsi
   )
   local installer="bin/${app_name}-${arch}-installer.exe"
   [[ -f "$installer" ]] || die "missing installer ${installer}"
-  echo "signing ${installer}"
   sign_windows_file "$installer"
+  log "==> copying windows/${arch}"
   cp "$exe" "$portable"
   cp "$installer" "$out/windows/${app_name}-v${app_version}-${arch}-setup.exe"
 }
@@ -430,7 +539,8 @@ build_windows() {
 write_nfpm_config() {
   local dest="$1"
   local arch="$2"
-  APP_NAME="$app_name" APP_VERSION="$app_version" GOARCH="$arch" NFPM_SRC="build/linux/nfpm/nfpm.yaml" NFPM_DEST="$dest" python3 - <<'PY'
+  resolve_python
+  APP_NAME="$app_name" APP_VERSION="$app_version" GOARCH="$arch" NFPM_SRC="build/linux/nfpm/nfpm.yaml" NFPM_DEST="$dest" "$PYTHON" - <<'PY'
 import os, re
 from pathlib import Path
 text = Path(os.environ["NFPM_SRC"]).read_text(encoding="utf-8")
@@ -458,21 +568,21 @@ sign_linux_package() {
   [[ -f "$LINUX_PGP_KEY" ]] || die "LINUX_PGP_KEY is not a file: ${LINUX_PGP_KEY}"
   local password="${LINUX_PGP_PASSWORD:-${WAILS_PGP_PASSWORD:-}}"
   if [[ -n "$password" ]]; then
-    "$wails3" tool sign --input "$file" --pgp-key "$LINUX_PGP_KEY" --pgp-password "$password"
+    run "signing $(basename "$file")" "$wails3" tool sign --input "$file" --pgp-key "$LINUX_PGP_KEY" --pgp-password "$password"
   else
-    "$wails3" tool sign --input "$file" --pgp-key "$LINUX_PGP_KEY"
+    run "signing $(basename "$file")" "$wails3" tool sign --input "$file" --pgp-key "$LINUX_PGP_KEY"
   fi
 }
 
 build_linux() {
   local arch="$1"
-  echo "building linux/${arch}"
-  "$wails3" build GOOS=linux ARCH="$arch"
+  run "compiling linux/${arch}" "$wails3" build GOOS=linux ARCH="$arch"
   local bin_path="bin/${app_name}"
   [[ -f "$bin_path" ]] || die "missing ${bin_path}"
   mkdir -p "$out/linux"
 
   if [[ "$dist" != true ]]; then
+    log "==> copying linux/${arch}"
     cp "$bin_path" "$out/linux/${app_name}-v${app_version}-${arch}"
     return
   fi
@@ -485,12 +595,12 @@ build_linux() {
   export GIT_COMMITTER_EMAIL
   export GOARCH="$arch"
 
-  "$wails3" task linux:generate:dotdesktop
+  run "writing the Linux desktop file" "$wails3" task linux:generate:dotdesktop
   local nfpm_tmp
   nfpm_tmp="$(mktemp "${TMPDIR:-/tmp}/nfpm.XXXXXX")"
   write_nfpm_config "$nfpm_tmp" "$arch"
-  "$wails3" tool package -name "$app_name" -format deb -config "$nfpm_tmp" -out "$root/bin"
-  "$wails3" tool package -name "$app_name" -format rpm -config "$nfpm_tmp" -out "$root/bin"
+  run "creating the deb package" "$wails3" tool package -name "$app_name" -format deb -config "$nfpm_tmp" -out "$root/bin"
+  run "creating the rpm package" "$wails3" tool package -name "$app_name" -format rpm -config "$nfpm_tmp" -out "$root/bin"
   rm -f "$nfpm_tmp"
 
   local deb="bin/${app_name}.deb"
@@ -503,7 +613,7 @@ build_linux() {
     cd "$root/build/linux/appimage"
     cp "$root/bin/${app_name}" "$app_name"
     cp "$root/build/appicon.png" "${app_name}.png"
-    "$wails3" generate appimage \
+    run "creating the AppImage" "$wails3" generate appimage \
       -binary "$app_name" \
       -icon "${app_name}.png" \
       -desktopfile "../${app_name}.desktop" \
@@ -543,6 +653,7 @@ hash_line() {
   fi
 }
 
+log "==> checksums"
 (
   cd "$out"
   find . -type f ! -name checksums.txt -print | LC_ALL=C sort | while IFS= read -r file; do
@@ -550,4 +661,5 @@ hash_line() {
   done > checksums.txt
 )
 
-echo "Output: $out"
+elapsed="$(( $(date +%s) - started ))"
+echo "Output: ${out} (${elapsed}s)"
