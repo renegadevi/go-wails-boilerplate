@@ -6,14 +6,14 @@
 name: "boilerplate"
 arch: ${GOARCH}
 platform: "linux"
-# scripts/build.sh --dist packs with the name from Taskfile.yml and the version from build/config.yml.
+# scripts/syncbuild copies name from Taskfile.yml, and version, description, and vendor from build/config.yml.
 version: "0.1.0"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
 description: "Wails + Vue 3 + Go boilerplate."
 vendor: "Your Name"
-# scripts/build.sh rewrites homepage and license from build/config.yml.
+# scripts/syncbuild copies homepage and license from build/config.yml.
 homepage: "https://github.com/renegadevi/go-wails-boilerplate"
 license: "MIT"
 release: "1"

@@ -229,11 +229,15 @@ tasks:
     cmds:
       - bun run dev --port {{.VITE_PORT}} --strictPort
 
-  update:build-assets:
-    summary: Updates the build assets
-    dir: build
+  sync:metadata:
+    summary: Copies name and version from build/config.yml into the platform files
     cmds:
-      - wails3 update build-assets -name "{{.APP_NAME}}" -binaryname "{{.APP_NAME}}" -config config.yml -dir .
+      - go -C "{{.TASKFILE_DIR}}/.." run ./scripts/syncbuild
+
+  update:build-assets:
+    summary: Copies name and version from build/config.yml into the platform files
+    cmds:
+      - task: sync:metadata
 
   build:server:
     summary: Builds the application in server mode (no GUI, HTTP server only)

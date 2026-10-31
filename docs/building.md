@@ -60,7 +60,7 @@ Linux builds on Linux, for the host architecture. On macOS the script skips Linu
 | Linux | `linux/boilerplate-v0.1.0-amd64` |
 | Windows | `windows/boilerplate-v0.1.0-<arch>.exe` |
 
-`Boilerplate` is `info.productName`. `boilerplate` is `APP_NAME`. `0.1.0` is `info.version`.
+`Boilerplate` is `info.productName`. `boilerplate` is `APP_NAME`. `0.1.0` is `info.version`. The build copies those into the Windows manifest, the Mac bundle, and the Linux packages.
 
 Local Mac `.app`: ad-hoc signature. Gatekeeper blocks it on other Macs.
 

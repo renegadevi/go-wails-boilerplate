@@ -139,15 +139,16 @@ Frameless windows draw `frontend/src/Toolbar.vue`. macOS traffic lights are in t
 - `build/config.yml` `dev_mode.log_level` - Wails watcher
 - `.env` `LOG_CONSOLE_LEVEL`, `LOG_FILE_LEVEL` - app log. Defaults are in `.env.sample`
 
-`config.go` and the frontend load `productName`, `description`, and `version` from `build/config.yml`. `scripts/build.sh` reads `APP_NAME`, `info.productName`, `info.version`, `info.homepage`, and `info.license`.
+`config.go` and the frontend load `productName`, `description`, and `version` from `build/config.yml`. A build copies the `info` fields into the Windows manifest, version info, NSIS defines, Mac plists, and Linux package file. `APP_NAME` in `Taskfile.yml` is the binary name. That copy writes it into the executable name, the package name, and the installer. `wails3 tool msix` reads `build/config.yml` when it packages. `build/windows/msix` is not an input.
 
-`wails3 tool msix` reads `build/config.yml` when it packages. `build/windows/msix` is not an input.
+`frontend/package.json` is the Vite package. Its name and version are separate from the app.
 
 ## Rename
 
-1. `build/config.yml`: `info.productName`, `info.description`, `info.companyName`, `info.version`, `info.productIdentifier`, `info.homepage`, `info.license`.
-2. `APP_NAME` in `Taskfile.yml`.
-3. `wails3 task common:update:build-assets`. Then set `LSMinimumSystemVersion` to `14.0.0` in `build/darwin/Info.plist` and `build/darwin/Info.dev.plist`. The task resets it to 12. It does not rewrite `build/windows/msix`.
-4. Module path in `go.mod`, and `boilerplate/...` imports.
+1. `build/config.yml`: `info.productName`, `info.description`, `info.companyName`, `info.copyright`, `info.comments`, `info.version`, `info.productIdentifier`, `info.homepage`, `info.license`.
+2. `APP_NAME` in `Taskfile.yml`, when the binary name should change.
+3. Module path in `go.mod`, and `boilerplate/...` imports.
+
+The next build writes the `config.yml` fields and `APP_NAME` into the platform files. `LSMinimumSystemVersion` stays `14.0.0`. `wails3 update build-assets` sets the Mac minimum back to 12 and drops the Linux AppStream entry.
 
 Icon: `build/appicon.png`.

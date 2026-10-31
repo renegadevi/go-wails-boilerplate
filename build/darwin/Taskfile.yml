@@ -53,7 +53,7 @@ tasks:
       GOARCH: '{{.ARCH | default ARCH}}'
       # macOS 14, not the stock Wails 12. The zoom path uses CADisplayLink.
       # Keep this in step with LSMinimumSystemVersion in the plists.
-      # `wails3 task common:update:build-assets` rewrites those plists back to 12.
+      # scripts/syncbuild leaves 14.0.0 in place. `wails3 update build-assets` rewrites the plists back to 12.
       # CGO_* covers the Objective-C objects. BUILD_FLAGS -extldflags stamps the
       # linked binary. Without that, the binary stays at Go's macOS 11 minimum.
       CGO_CFLAGS: "-mmacosx-version-min=14.0"
@@ -164,6 +164,7 @@ tasks:
   create:app:bundle:
     summary: Creates an `.app` bundle
     cmds:
+      - task: common:sync:metadata
       # A reused bundle can acquire Finder metadata in synced folders. Build a
       # fresh bundle so codesign never has to replace a contaminated signature.
       - test -n "{{.BIN_DIR}}" && test -n "{{.APP_NAME}}" && rm -rf -- "{{.BIN_DIR}}/{{.APP_NAME}}.app"
@@ -194,6 +195,7 @@ tasks:
 
   run:
     cmds:
+      - task: common:sync:metadata
       - wails3 tool prepare-macos-output --dir "{{.BIN_DIR}}"
       - test -n "{{.BIN_DIR}}" && test -n "{{.APP_NAME}}" && rm -rf -- "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
       - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS"

@@ -1,15 +1,10 @@
 # Name, description, and version live here.
 # config.go and the frontend read the name, description, and version.
-# scripts/build.sh also reads the homepage and license for the Linux packages.
-# The binary name is APP_NAME in Taskfile.yml.
-#
-# `wails3 task common:update:build-assets` rewrites the plists, the Windows
-# version info, the NSIS defines, and the Linux package file from this info.
-# That rewrite sets the Mac minimum system version back to 12. Put it back to
-# 14.0.0. The zoom path uses CADisplayLink, and build/darwin/Taskfile.yml
-# compiles for macOS 14.
-# The same rewrite sets the Linux homepage back to https://wails.io and drops
-# the AppStream metainfo entry from build/linux/nfpm/nfpm.yaml. Put those back.
+# A build copies these fields into the Windows manifest, version info, NSIS
+# defines, Mac plists, and Linux package file. The binary name is APP_NAME
+# in Taskfile.yml. The Mac minimum stays 14.0.0.
+# `wails3 update build-assets` sets that minimum back to 12 and drops the
+# AppStream entry from build/linux/nfpm/nfpm.yaml.
 # scripts/write-linux-metainfo.py writes the metainfo from the fields below.
 #
 # MSIX packaging reads this file directly. build/windows/msix is not an input.

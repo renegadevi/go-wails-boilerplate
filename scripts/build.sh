@@ -218,6 +218,8 @@ app_license="$(read_yaml_value build/config.yml '(?m)^  license: \"([^\"]+)\"')"
 [[ -n "$app_name" && -n "$app_version" && -n "$product_name" && -n "$product_id" && -n "$app_description" && -n "$app_company" && -n "$app_homepage" && -n "$app_license" ]] || die "APP_NAME, info.productName, info.productIdentifier, info.description, info.companyName, info.version, info.homepage, and info.license must be set"
 [[ "$product_name" != */* ]] || die "info.productName cannot contain a slash"
 log "==> ${product_name} ${app_version}"
+log "==> syncing package metadata"
+go run ./scripts/syncbuild
 
 if command -v wails3 >/dev/null 2>&1; then
   wails3="$(command -v wails3)"
