@@ -1,17 +1,34 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { Application, Window } from '@wailsio/runtime'
-import { Title } from '../bindings/boilerplate/app'
 
-const title = ref('')
+const title = __APP_TITLE__
 // The tall Mac bar has to be in the first paint. The user agent is enough for that.
 const mac = ref(navigator.userAgent.includes('Macintosh'))
 // Linux caption buttons are circles. Hover is a lighter disc, including close.
 const linux = ref(!mac.value && navigator.userAgent.includes('Linux'))
 const maximised = ref(false)
 
+// Maximise, restore, snapping, and shortcuts all resize the webview, on every system.
+// One query after the resize settles keeps a drag from sending a call per frame.
+const resizeSettleMs = 100
+let resizeTimer: number | undefined
+let latestQuery = 0
+
 async function syncMaximised(): Promise<void> {
-  maximised.value = await Window.IsMaximised()
+  const query = ++latestQuery
+  const isMaximised = await Window.IsMaximised()
+  if (query === latestQuery) {
+    maximised.value = isMaximised
+  }
+}
+
+function onResize(): void {
+  window.clearTimeout(resizeTimer)
+  resizeTimer = window.setTimeout(() => {
+    resizeTimer = undefined
+    void syncMaximised()
+  }, resizeSettleMs)
 }
 
 async function toggleMaximise(): Promise<void> {
@@ -20,12 +37,16 @@ async function toggleMaximise(): Promise<void> {
   } else {
     await Window.Maximise()
   }
-  window.setTimeout(syncMaximised, 50)
 }
 
-onMounted(async () => {
-  title.value = await Title()
-  await syncMaximised()
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+  void syncMaximised()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+  window.clearTimeout(resizeTimer)
 })
 </script>
 
