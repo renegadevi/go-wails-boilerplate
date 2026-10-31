@@ -1,6 +1,7 @@
 # Signed release. Starts only from the Actions "Run workflow" button.
 # A push to main does not run it. The script is the same one used on a laptop:
 # ./scripts/build.sh build --dist
+# Setup, secrets, and a local --dist: docs/releasing.md
 
 name: Release
 
@@ -60,6 +61,7 @@ jobs:
             echo "Missing Actions secrets:${missing}"
             echo "Add them under Settings, Secrets and variables, Actions."
             echo "To sign on a Mac instead, copy build/dist.env.example to build/dist.env and run ./scripts/build.sh build --dist"
+            echo "Details: docs/releasing.md"
             exit 1
           fi
 
@@ -158,6 +160,7 @@ jobs:
             echo "Missing Actions secrets:${missing}"
             echo "Add them under Settings, Secrets and variables, Actions."
             echo "To sign on your computer instead, copy build/dist.env.example to build/dist.env and run ./scripts/build.sh build --dist"
+            echo "Details: docs/releasing.md"
             exit 1
           fi
 

@@ -74,9 +74,6 @@ func positionDarwinTrafficLights() {
 // Frameless reports whether the frontend should draw the toolbar.
 func (a *App) Frameless() bool { return windowFrameless }
 
-// Title is the window title. It comes from build/config.yml "info.productName".
-func (a *App) Title() string { return AppTitle }
-
 func windowOptions() application.WebviewWindowOptions {
 	opts := application.WebviewWindowOptions{
 		Name:             "main",
@@ -94,16 +91,24 @@ func windowOptions() application.WebviewWindowOptions {
 		Windows: application.WindowsWindow{
 			Theme: application.Dark,
 		},
+		// The webview fills newly exposed edges with its own colour while a
+		// resize or un-maximise catches up: white in the light appearance,
+		// near BackgroundColour in the dark one. CSS cannot reach it.
+		Mac: application.MacWindow{
+			Appearance: application.NSAppearanceNameDarkAqua,
+		},
 		// Windows and Linux hang the menu on the frame. macOS uses the
 		// screen menu bar, so this flag does nothing there.
 		UseApplicationMenu: showNativeMenu(),
+		// Only WebView2 reads this, and only in release builds. The frontend
+		// applies the mode on every system, dev builds included.
+		DefaultContextMenuDisabled: contextMenu != ContextMenuDefault,
+		KeyBindings:                inspectorKeyBindings(),
 	}
 	if windowFrameless {
 		// Keep the traffic lights. window_darwin.go moves them into the
 		// taller custom toolbar. A framed window keeps the system title bar.
-		opts.Mac = application.MacWindow{
-			TitleBar: application.MacTitleBarHidden,
-		}
+		opts.Mac.TitleBar = application.MacTitleBarHidden
 	}
 	return opts
 }

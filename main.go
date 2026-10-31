@@ -2,6 +2,8 @@ package main
 
 import (
 	"embed"
+	"fmt"
+	"os"
 
 	"boilerplate/internal/applog"
 
@@ -38,10 +40,11 @@ func main() {
 	// NativeWindow is still nil.
 	window.OnWindowEvent(events.Common.WindowShow, func(*application.WindowEvent) {
 		hideLinuxFramelessEdge(window)
+		enableInspectElement(window)
 	})
 
-	err := app.Run()
-	if err != nil {
-		println("Error:", err.Error())
+	if err := app.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %s\n", err)
+		os.Exit(1)
 	}
 }

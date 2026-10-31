@@ -12,6 +12,13 @@
 import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wailsio/runtime";
 
 /**
+ * ContextMenu reports the right-click mode so the frontend can apply it.
+ */
+export function ContextMenu(): $CancellablePromise<string> {
+    return $Call.ByID(439063419);
+}
+
+/**
  * Frameless reports whether the frontend should draw the toolbar.
  */
 export function Frameless(): $CancellablePromise<boolean> {
@@ -23,13 +30,6 @@ export function Frameless(): $CancellablePromise<boolean> {
  */
 export function Greet(name: string): $CancellablePromise<string> {
     return $Call.ByID(2659711170, name);
-}
-
-/**
- * Title is the window title. It comes from build/config.yml "info.productName".
- */
-export function Title(): $CancellablePromise<string> {
-    return $Call.ByID(2850361281);
 }
 
 /**

@@ -79,19 +79,9 @@ To build other platforms, pass a comma-separated list. On Linux, the Linux app a
 ./scripts/build.sh build --platforms linux/amd64,windows/amd64
 ```
 
-On an arm64 Linux machine, use `linux/arm64` in that list. The Mac app builds on macOS. Linux packages build on Linux, for this computer's architecture. On Windows, pass the same list to `scripts\build.cmd`. The list also works with `--dist`.
+On an arm64 Linux machine, use `linux/arm64` in that list. The Mac app builds on macOS. Linux packages build on Linux, for this computer's architecture. On Windows, pass the same list to `scripts\build.cmd`.
 
-Release:
-
-```sh
-./scripts/build.sh build --dist
-```
-
-```bat
-scripts\build.cmd build --dist
-```
-
-On Windows, `--dist` needs `signtool`, NSIS, and `build\dist.env`. Details: [Building and distributing](docs/building.md).
+Packages for other people: [Releasing](docs/releasing.md). That is the GitHub Release workflow. It runs this script with `--dist` on the runners. A local `--dist` is the same command when Actions is unavailable, and it stops until the certificates and tools for that computer are present.
 
 ## Test
 
@@ -105,12 +95,15 @@ go test ./...
 - `app.go` - `Version`, `Greet`
 - `config.go` - name, description, and version from `build/config.yml`
 - `window.go` - window template
+- `contextmenu.go` - right-click mode
+- `inspector_dev.go` - dev-only inspector shortcut
 - `menu.go` - native menu
 - `internal/applog` - process log
 - `frontend/` - Vue app
 - `Taskfile.yml` - Wails tasks
-- `scripts/build.sh` - build and release. On Windows: `scripts\build.cmd`
-- `docs/building.md` - packages and signing
+- `scripts/build.sh` - local build and `--dist`. On Windows: `scripts\build.cmd`
+- `docs/building.md` - local build
+- `docs/releasing.md` - signed packages and the Release workflow
 - `docs/window-modes.md` - window screenshots per OS
 
 ## Window
@@ -127,6 +120,18 @@ go test ./...
 Frameless windows draw `frontend/src/Toolbar.vue`. macOS traffic lights are in that toolbar. On Windows and Linux the menu bar is part of the system frame, so `WindowFramelessMenu` and `WindowFrameless` both show the toolbar and no menu bar.
 
 `menu.go`: macOS gets App, Edit, and Window. Windows and Linux get Edit and Window. On Windows the menu bar follows the system theme.
+
+## Right-click
+
+`contextMenu` in `contextmenu.go`. Current value: `ContextMenuDefault`. `frontend/src/contextMenu.ts` applies it in dev and release builds.
+
+| Constant | Result |
+| --- | --- |
+| `ContextMenuDefault` | Wails behaviour. Release: the webview menu on inputs, editable content, and selected text only. Dev: the webview menu everywhere, with Inspect Element. |
+| `ContextMenuDisabled` | No right-click anywhere, inputs included. |
+| `ContextMenuCustom` | No webview menu. The event still reaches Vue `@contextmenu` handlers and Wails `--custom-contextmenu` menus, so the app draws its own. |
+
+Dev builds open the web inspector with `Cmd+Option+Shift+I` on macOS and `Ctrl+Shift+Alt+I` on Windows and Linux, in every mode. Release builds (`-tags production`) have no inspector and no shortcut. On macOS, `inspector_darwin_dev.go` adds Inspect Element and the shortcut with private WebKit calls. It is not compiled into release builds.
 
 ## Configuration
 
