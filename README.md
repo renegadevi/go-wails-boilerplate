@@ -95,6 +95,8 @@ go test ./...
 - `app.go` - `Version`, `Greet`
 - `config.go` - name, description, and version from `build/config.yml`
 - `window.go` - window template
+- `contextmenu.go` - right-click mode
+- `inspector_dev.go` - dev-only inspector shortcut
 - `menu.go` - native menu
 - `internal/applog` - process log
 - `frontend/` - Vue app
@@ -118,6 +120,18 @@ go test ./...
 Frameless windows draw `frontend/src/Toolbar.vue`. macOS traffic lights are in that toolbar. On Windows and Linux the menu bar is part of the system frame, so `WindowFramelessMenu` and `WindowFrameless` both show the toolbar and no menu bar.
 
 `menu.go`: macOS gets App, Edit, and Window. Windows and Linux get Edit and Window. On Windows the menu bar follows the system theme.
+
+## Right-click
+
+`contextMenu` in `contextmenu.go`. Current value: `ContextMenuDefault`. `frontend/src/contextMenu.ts` applies it in dev and release builds.
+
+| Constant | Result |
+| --- | --- |
+| `ContextMenuDefault` | Wails behaviour. Release: the webview menu on inputs, editable content, and selected text only. Dev: the webview menu everywhere, with Inspect Element. |
+| `ContextMenuDisabled` | No right-click anywhere, inputs included. |
+| `ContextMenuCustom` | No webview menu. The event still reaches Vue `@contextmenu` handlers and Wails `--custom-contextmenu` menus, so the app draws its own. |
+
+Dev builds open the web inspector with `Cmd+Option+Shift+I` on macOS and `Ctrl+Shift+Alt+I` on Windows and Linux, in every mode. Release builds (`-tags production`) have no inspector and no shortcut. On macOS, `inspector_darwin_dev.go` adds Inspect Element and the shortcut with private WebKit calls. It is not compiled into release builds.
 
 ## Configuration
 

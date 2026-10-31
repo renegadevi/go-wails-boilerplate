@@ -100,6 +100,10 @@ func windowOptions() application.WebviewWindowOptions {
 		// Windows and Linux hang the menu on the frame. macOS uses the
 		// screen menu bar, so this flag does nothing there.
 		UseApplicationMenu: showNativeMenu(),
+		// Only WebView2 reads this, and only in release builds. The frontend
+		// applies the mode on every system, dev builds included.
+		DefaultContextMenuDisabled: contextMenu != ContextMenuDefault,
+		KeyBindings:                inspectorKeyBindings(),
 	}
 	if windowFrameless {
 		// Keep the traffic lights. window_darwin.go moves them into the

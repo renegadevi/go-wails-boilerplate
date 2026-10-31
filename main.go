@@ -40,6 +40,7 @@ func main() {
 	// NativeWindow is still nil.
 	window.OnWindowEvent(events.Common.WindowShow, func(*application.WindowEvent) {
 		hideLinuxFramelessEdge(window)
+		enableInspectElement(window)
 	})
 
 	if err := app.Run(); err != nil {
