@@ -1,6 +1,6 @@
 //go:build darwin && (!production || devtools)
 
-package main
+package inspector
 
 /*
 #cgo CFLAGS: -x objective-c

@@ -68,7 +68,7 @@ input:focus-visible {
   cursor: default;
 }
 
-/* Taller custom toolbar, the kind current macOS apps use. window_darwin.go
+/* Taller custom toolbar, the kind current macOS apps use. internal/window/window_darwin.go
    centers the 14pt traffic lights in this 42pt bar (16pt from the left).
    The extra pixel is the bottom border: border-box would otherwise take
    it out of the 42pt, and the title would sit off the lights. */

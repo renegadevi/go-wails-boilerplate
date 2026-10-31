@@ -12,7 +12,7 @@ function suppressWebviewMenu(event: MouseEvent): void {
   event.preventDefault()
 }
 
-// applyContextMenuMode applies contextMenu from contextmenu.go. The listener
+// applyContextMenuMode applies contextMenu from internal/window/contextmenu.go. The listener
 // lives as long as the page.
 export async function applyContextMenuMode(): Promise<void> {
   const mode = await ContextMenu()
