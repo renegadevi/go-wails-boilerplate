@@ -2,6 +2,8 @@ package main
 
 import (
 	"embed"
+	"fmt"
+	"os"
 
 	"boilerplate/internal/applog"
 
@@ -40,8 +42,8 @@ func main() {
 		hideLinuxFramelessEdge(window)
 	})
 
-	err := app.Run()
-	if err != nil {
-		println("Error:", err.Error())
+	if err := app.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %s\n", err)
+		os.Exit(1)
 	}
 }

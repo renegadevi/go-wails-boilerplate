@@ -79,19 +79,9 @@ To build other platforms, pass a comma-separated list. On Linux, the Linux app a
 ./scripts/build.sh build --platforms linux/amd64,windows/amd64
 ```
 
-On an arm64 Linux machine, use `linux/arm64` in that list. The Mac app builds on macOS. Linux packages build on Linux, for this computer's architecture. On Windows, pass the same list to `scripts\build.cmd`. The list also works with `--dist`.
+On an arm64 Linux machine, use `linux/arm64` in that list. The Mac app builds on macOS. Linux packages build on Linux, for this computer's architecture. On Windows, pass the same list to `scripts\build.cmd`.
 
-Release:
-
-```sh
-./scripts/build.sh build --dist
-```
-
-```bat
-scripts\build.cmd build --dist
-```
-
-On Windows, `--dist` needs `signtool`, NSIS, and `build\dist.env`. Details: [Building and distributing](docs/building.md).
+Packages for other people: [Releasing](docs/releasing.md). That is the GitHub Release workflow. It runs this script with `--dist` on the runners. A local `--dist` is the same command when Actions is unavailable, and it stops until the certificates and tools for that computer are present.
 
 ## Test
 
@@ -109,8 +99,9 @@ go test ./...
 - `internal/applog` - process log
 - `frontend/` - Vue app
 - `Taskfile.yml` - Wails tasks
-- `scripts/build.sh` - build and release. On Windows: `scripts\build.cmd`
-- `docs/building.md` - packages and signing
+- `scripts/build.sh` - local build and `--dist`. On Windows: `scripts\build.cmd`
+- `docs/building.md` - local build
+- `docs/releasing.md` - signed packages and the Release workflow
 - `docs/window-modes.md` - window screenshots per OS
 
 ## Window

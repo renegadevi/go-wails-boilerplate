@@ -1,6 +1,10 @@
+// Package applog sets up the process log and the Wails system logger.
 package applog
 
 import (
+	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -8,7 +12,7 @@ import (
 	log "github.com/renegadevi/prezerolog"
 )
 
-// Pre sends process logs through prezerolog. Device changes do not go through here.
+// Pre sends process logs through prezerolog.
 type Pre struct{}
 
 // logDefaults fill any app log setting still empty after the process environment and .env.
@@ -25,28 +29,58 @@ var logDefaults = map[string]string{
 
 // Init prepares console and rotated file logging.
 // The log folder is absolute. Finder starts a Mac app with a working directory of /, and a relative "logs" folder panics there.
+// prezerolog panics when it cannot create the log folder, so file logging is turned off
+// when neither folder can be created. Problems found before the logger exists are logged once it is ready.
 func Init() {
-	applyLogDefaults()
-	dir := logDirectory()
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		dir = filepath.Join(os.TempDir(), "boilerplate", "logs")
-		_ = os.MkdirAll(dir, 0o755)
+	var problems []error
+	if err := applyLogDefaults(); err != nil {
+		problems = append(problems, err)
 	}
-	_ = os.Setenv("LOG_DIR", dir)
+	dir, err := prepareLogDirectory(logDirectory(), filepath.Join(os.TempDir(), "boilerplate", "logs"))
+	if err != nil {
+		problems = append(problems, err)
+	}
+	if dir == "" {
+		_ = os.Setenv("LOG_FILE", "false")
+	} else {
+		_ = os.Setenv("LOG_DIR", dir)
+	}
 	log.InitLogging()
+	for _, problem := range problems {
+		Pre{}.Warn("log setup", map[string]any{"err": problem.Error()})
+	}
+}
+
+// prepareLogDirectory creates preferred, or fallback when that fails. It returns the folder
+// in use, and an empty folder when neither can be created. The error describes every failure.
+func prepareLogDirectory(preferred, fallback string) (string, error) {
+	preferredErr := os.MkdirAll(preferred, 0o755)
+	if preferredErr == nil {
+		return preferred, nil
+	}
+	preferredErr = fmt.Errorf("create log folder %s: %w", preferred, preferredErr)
+	if err := os.MkdirAll(fallback, 0o755); err != nil {
+		return "", errors.Join(preferredErr, fmt.Errorf("create fallback log folder %s: %w; file logging is off", fallback, err))
+	}
+	return fallback, fmt.Errorf("%w; using %s", preferredErr, fallback)
 }
 
 // applyLogDefaults loads .env, then fills any log setting that is still empty.
-func applyLogDefaults() {
-	_ = godotenv.Load()
+// A missing .env is normal. A .env that cannot be read or parsed is returned, and the defaults still apply.
+func applyLogDefaults() error {
+	var loadErr error
+	if err := godotenv.Load(); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		loadErr = fmt.Errorf("read .env: %w", err)
+	}
 	for key, value := range logDefaults {
 		if os.Getenv(key) == "" {
 			_ = os.Setenv(key, value)
 		}
 	}
+	return loadErr
 }
 
-// logDirectory is where process logs are written. An absolute LOG_DIR is kept. Anything else goes next to the database.
+// logDirectory is where process logs are written. An absolute LOG_DIR is kept. Anything else goes under the user config folder.
 func logDirectory() string {
 	if dir := os.Getenv("LOG_DIR"); dir != "" && filepath.IsAbs(dir) {
 		return dir
@@ -88,57 +122,4 @@ func (Pre) Error(msg string, err error) {
 		return
 	}
 	log.Error(msg, err)
-}
-
-// Text is the current process log file. Export uses this. The window tail is shorter.
-func Text() string {
-	if log.AppLogger == nil {
-		return ""
-	}
-	body, err := os.ReadFile(log.AppLogger.GetCurrentLogFile())
-	if err != nil {
-		return ""
-	}
-	return string(body)
-}
-
-// Tail returns the end of the current process log. The change-log export does not include it.
-func Tail() string {
-	if log.AppLogger == nil {
-		return ""
-	}
-	path := log.AppLogger.GetCurrentLogFile()
-	body, err := os.ReadFile(path)
-	if err != nil {
-		return ""
-	}
-	text := string(body)
-	const max = 200
-	lines := splitLines(text)
-	if len(lines) > max {
-		lines = lines[len(lines)-max:]
-	}
-	out := ""
-	for i, line := range lines {
-		if i > 0 {
-			out += "\n"
-		}
-		out += line
-	}
-	return out
-}
-
-func splitLines(text string) []string {
-	var lines []string
-	start := 0
-	for i := 0; i < len(text); i++ {
-		if text[i] == '\n' {
-			lines = append(lines, text[start:i])
-			start = i + 1
-		}
-	}
-	if start < len(text) {
-		lines = append(lines, text[start:])
-	}
-	return lines
 }

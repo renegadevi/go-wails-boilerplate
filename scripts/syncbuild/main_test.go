@@ -35,6 +35,8 @@ func TestSyncUpdatesIdentityAndKeepsLocalLines(t *testing.T) {
 	replaceIn(t, filepath.Join(dir, "build", "config.yml"), `homepage: "https://github.com/renegadevi/go-wails-boilerplate"`, `homepage: "https://example.com/new"`)
 	replaceIn(t, filepath.Join(dir, "build", "config.yml"), `license: "MIT"`, `license: "Apache-2.0"`)
 	replaceIn(t, filepath.Join(dir, "Taskfile.yml"), `APP_NAME: "boilerplate"`, `APP_NAME: "my-app"`)
+	nfpmPath := filepath.Join(dir, "build", "linux", "nfpm", "nfpm.yaml")
+	writeText(t, nfpmPath, toCRLF(readText(t, nfpmPath)))
 
 	changed, err := sync(dir)
 	if err != nil {
@@ -79,7 +81,7 @@ func TestSyncUpdatesIdentityAndKeepsLocalLines(t *testing.T) {
 		t.Fatal("NSIS lost a variable reference")
 	}
 
-	nfpm := readText(t, filepath.Join(dir, "build", "linux", "nfpm", "nfpm.yaml"))
+	nfpm := readText(t, nfpmPath)
 	for _, want := range []string{
 		`name: "my-app"`,
 		`version: "2.3.4"`,
@@ -94,8 +96,8 @@ func TestSyncUpdatesIdentityAndKeepsLocalLines(t *testing.T) {
 			t.Fatalf("nfpm.yaml missing %s", want)
 		}
 	}
-	if strings.Contains(nfpm, "\r\n") == false || strings.Contains(strings.ReplaceAll(nfpm, "\r\n", ""), "\n") {
-		t.Fatal("line endings changed")
+	if strings.Count(nfpm, "\r\n") == 0 || strings.Count(nfpm, "\n") != strings.Count(nfpm, "\r\n") {
+		t.Fatal("CRLF line endings were not kept")
 	}
 
 	again, err := sync(dir)
@@ -160,6 +162,18 @@ func replaceIn(t *testing.T, path, old, next string) {
 		t.Fatalf("%s does not contain %s", path, old)
 	}
 	if err := os.WriteFile(path, []byte(strings.Replace(text, old, next, 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// toCRLF gives a file Windows line endings whether the checkout used LF or CRLF.
+func toCRLF(text string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(text, "\r\n", "\n"), "\n", "\r\n")
+}
+
+func writeText(t *testing.T, path, text string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }

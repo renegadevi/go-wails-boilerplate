@@ -26,13 +26,6 @@ export function Greet(name: string): $CancellablePromise<string> {
 }
 
 /**
- * Title is the window title. It comes from build/config.yml "info.productName".
- */
-export function Title(): $CancellablePromise<string> {
-    return $Call.ByID(2850361281);
-}
-
-/**
  * Version is the app version shown in the UI.
  */
 export function Version(): $CancellablePromise<string> {
