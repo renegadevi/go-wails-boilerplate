@@ -1,6 +1,6 @@
 # Window modes
 
-`window` in `window.go`. One picture per constant, on macOS, Windows, and Linux.
+`template` in `internal/window/window.go`. One picture per constant, on macOS, Windows, and Linux.
 
 The README picture is **WindowFramelessMenu** on macOS: [`screenshot.png`](screenshot.png).
 

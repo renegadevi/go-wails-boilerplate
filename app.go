@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"boilerplate/internal/applog"
+	"boilerplate/internal/window"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -30,9 +31,15 @@ func (a *App) Greet(name string) string {
 	return "Hello, " + name + "!"
 }
 
+// Frameless reports whether the frontend should draw the toolbar.
+func (a *App) Frameless() bool { return window.Frameless() }
+
+// ContextMenu reports the right-click mode so the frontend can apply it.
+func (a *App) ContextMenu() string { return window.ContextMenu() }
+
 func (a *App) ServiceStartup(context.Context, application.ServiceOptions) error {
 	applog.Init()
-	positionDarwinTrafficLights()
+	window.PositionTrafficLights()
 	applog.Pre{}.Info("ready", map[string]any{"version": AppVersion})
 	return nil
 }

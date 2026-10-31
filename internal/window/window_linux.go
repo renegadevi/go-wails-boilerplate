@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package window
 
 /*
 #cgo pkg-config: gtk4

@@ -1,4 +1,6 @@
-package main
+// Package window holds the main window template, the native menu, and the
+// right-click mode.
+package window
 
 import (
 	goruntime "runtime"
@@ -34,22 +36,22 @@ const (
 	WindowFrameless = "frameless"
 )
 
-// window is the window template. Pick one of the constants above.
-const window = WindowFramelessMenu
+// template is the window template. Pick one of the constants above.
+const template = WindowFramelessMenu
 
-// windowFrameless is true when the frontend draws the toolbar.
-const windowFrameless = window == WindowFrameless || window == WindowFramelessMenu
+// frameless is true when the frontend draws the toolbar.
+const frameless = template == WindowFrameless || template == WindowFramelessMenu
 
 // nativeFrameless is true when the OS window frame itself is removed.
 // On macOS the native frame carries the rounded corners and the traffic
 // lights, so we keep the frame there and hide its title bar through
 // Mac.TitleBar instead of removing the frame entirely.
-const nativeFrameless = windowFrameless && goruntime.GOOS != "darwin"
+const nativeFrameless = frameless && goruntime.GOOS != "darwin"
 
 // showNativeMenu reports whether this window carries a native menu.
 // A frameless window on Windows or Linux has no frame to hang that menu on.
 func showNativeMenu() bool {
-	switch window {
+	switch template {
 	case WindowFrameMenu:
 		return true
 	case WindowFramelessMenu:
@@ -64,20 +66,29 @@ func showNativeMenu() bool {
 // adjustment is Objective-C and cannot be compiled for the other systems.
 var installMacTrafficLights = func() {}
 
-func positionDarwinTrafficLights() {
-	if !windowFrameless {
+// PositionTrafficLights moves the macOS traffic lights into the custom toolbar.
+// It does nothing for a framed window or on other systems.
+func PositionTrafficLights() {
+	if !frameless {
 		return
 	}
 	installMacTrafficLights()
 }
 
 // Frameless reports whether the frontend should draw the toolbar.
-func (a *App) Frameless() bool { return windowFrameless }
+func Frameless() bool { return frameless }
 
-func windowOptions() application.WebviewWindowOptions {
+// OnShow finishes native setup that needs the shown window. The GTK window
+// exists by then. Earlier than that, NativeWindow is still nil.
+func OnShow(window *application.WebviewWindow) {
+	hideLinuxFramelessEdge(window)
+}
+
+// Options builds the main window from the template.
+func Options(title string) application.WebviewWindowOptions {
 	opts := application.WebviewWindowOptions{
 		Name:             "main",
-		Title:            AppTitle,
+		Title:            title,
 		Width:            1200,
 		Height:           800,
 		MinWidth:         800,
@@ -103,9 +114,8 @@ func windowOptions() application.WebviewWindowOptions {
 		// Only WebView2 reads this, and only in release builds. The frontend
 		// applies the mode on every system, dev builds included.
 		DefaultContextMenuDisabled: contextMenu != ContextMenuDefault,
-		KeyBindings:                inspectorKeyBindings(),
 	}
-	if windowFrameless {
+	if frameless {
 		// Keep the traffic lights. window_darwin.go moves them into the
 		// taller custom toolbar. A framed window keeps the system title bar.
 		opts.Mac.TitleBar = application.MacTitleBarHidden

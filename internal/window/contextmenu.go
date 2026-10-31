@@ -1,4 +1,4 @@
-package main
+package window
 
 const (
 	// ContextMenuDefault keeps the Wails behaviour. Release builds show the
@@ -14,8 +14,8 @@ const (
 )
 
 // contextMenu is the right-click behaviour. Pick one of the constants above.
-// The dev-only inspector shortcut in inspector_dev.go works in every mode.
+// The dev-only inspector shortcut in internal/inspector works in every mode.
 const contextMenu = ContextMenuDefault
 
 // ContextMenu reports the right-click mode so the frontend can apply it.
-func (a *App) ContextMenu() string { return contextMenu }
+func ContextMenu() string { return contextMenu }
