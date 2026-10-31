@@ -41,7 +41,8 @@ onMounted(async () => {
       </button>
       <button type="button" class="titlebar-btn" :aria-label="maximised ? 'Restore' : 'Maximise'" @click="toggleMaximise">
         <svg v-if="maximised" viewBox="0 0 10 10" aria-hidden="true">
-          <path fill-rule="evenodd" d="M3 1h6v6H7V3H3V1zM1 3h6v6H1V3zm1 1v4h4V4H2z" />
+          <!-- Rear square is only the edges the front square does not cover, at the same 1px weight. -->
+          <path fill-rule="evenodd" d="M3 1h6v6H7V6h1V2H4V3H3zM1 3h6v6H1V3zm1 1v4h4V4H2z" />
         </svg>
         <svg v-else viewBox="0 0 10 10" aria-hidden="true">
           <path fill-rule="evenodd" d="M1 1h8v8H1V1zm1 1v6h6V2H2z" />
