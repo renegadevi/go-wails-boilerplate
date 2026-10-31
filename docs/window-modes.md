@@ -14,7 +14,7 @@ The native menu is in the screen menu bar, outside the window. Frameless modes k
 
 System frame. No menu.
 
-`screenshots/macos-WindowFrame.png`
+![WindowFrame on macOS](screenshots/macos-WindowFrame.png)
 
 ### WindowFrameMenu
 
@@ -32,7 +32,7 @@ Custom toolbar. Native menu in the screen menu bar. This is the README picture.
 
 Custom toolbar. No native menu.
 
-`screenshots/macos-WindowFrameless.png`
+![WindowFrameless on macOS](screenshots/macos-WindowFrameless.png)
 
 ## Windows
 
