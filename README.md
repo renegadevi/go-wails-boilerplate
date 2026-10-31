@@ -1,8 +1,10 @@
 # Boilerplate
 
-Wails v3 desktop app. Go backend, Vue 3 + TypeScript + Tailwind frontend.
+A boilerplate for production ready cross-platform desktop applications, written in Go with Wails and a Vue, TypeScript, and Tailwind frontend. One build script produces signed, packaged applications for macOS (`.app` and `.dmg`), Windows (`.exe` and installer), and Linux (`.deb`, `.rpm`, and AppImage), locally or from the GitHub Release workflow.
 
-**WindowFramelessMenu** on macOS
+(Todo: Needs more verification testing in the wild for signed builds)
+
+Example **WindowFramelessMenu** on macOS
 
 ![WindowFramelessMenu on macOS](docs/screenshot.png)
 
