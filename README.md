@@ -42,7 +42,7 @@ Fedora: `gtk4-devel`, `webkitgtk6.0-devel`. Arch: `gtk4`, `webkitgtk-6.0`.
 ### Wails CLI
 
 ```sh
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
 ```
 
 Binary: `$(go env GOPATH)/bin`.

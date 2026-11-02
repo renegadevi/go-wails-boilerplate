@@ -226,7 +226,7 @@ if command -v wails3 >/dev/null 2>&1; then
 else
   wails3="$(go env GOPATH)/bin/wails3"
 fi
-[[ -x "$wails3" ]] || die "wails3 is not installed. Run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0"
+[[ -x "$wails3" ]] || die "wails3 is not installed. Run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0"
 
 requested=()
 if [[ -n "$platforms_arg" ]]; then
